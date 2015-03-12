@@ -3,7 +3,62 @@
 ##练习1
 ##练习2
 ###2.1 从CPU加电后执行的第一条指令开始，单步跟踪BIOS的执行。
-见练习2.2
+gdb中反汇编bios的代码结果是错的，不知道为什么。参考答案后使用qemu的参数将执行到的代码输出到log文件中。
+```makefile
+lab1-mon: $(UCOREIMG)
+	$(V)$(TERMINAL) -e "$(QEMU) -S -s -d in_asm -D $(BINDIR)/q.log -monitor stdio -hda $< -serial null"
+	$(V)sleep 2
+	$(V)$(TERMINAL) -e "gdb -q -x tools/lab1init"
+```
+之后开始执行，得到如下指令序列： 
+```asm
+----------------
+IN: 
+0xfffffff0:  ljmp   $0xf000,$0xe05b
+
+----------------
+IN: 
+0x000fe05b:  cmpl   $0x0,%cs:0x6c30
+
+----------------
+IN: 
+0x000fe062:  jne    0xfd34d
+
+----------------
+IN: 
+0x000fe066:  xor    %ax,%ax
+
+----------------
+IN: 
+0x000fe068:  mov    %ax,%ss
+
+----------------
+IN: 
+0x000fe06a:  mov    $0x7000,%esp
+
+----------------
+IN: 
+0x000fe070:  mov    $0xf2e31,%edx
+0x000fe076:  jmp    0xfd1be
+
+----------------
+IN: 
+0x000fd1be:  mov    %eax,%ecx
+0x000fd1c1:  cli    
+0x000fd1c2:  cld    
+0x000fd1c3:  mov    $0x8f,%eax
+0x000fd1c9:  out    %al,$0x70
+0x000fd1cb:  in     $0x71,%al
+0x000fd1cd:  in     $0x92,%al
+0x000fd1cf:  or     $0x2,%al
+0x000fd1d1:  out    %al,$0x92
+0x000fd1d3:  lidtw  %cs:0x6c20
+0x000fd1d9:  lgdtw  %cs:0x6be0
+0x000fd1df:  mov    %cr0,%eax
+0x000fd1e2:  or     $0x1,%eax
+0x000fd1e6:  mov    %eax,%cr0
+```
+bios再bootloader之前执行了一万多条指令。
 ###2.2 在初始化位置0x7c00设置实地址断点,测试断点正常。
 先把tools/gdbinit中的continue去掉并加入b *0x7c00
 执行debug命令```make debug```，qemu开始运行，自动在0x7c00暂停。
@@ -112,3 +167,29 @@ gdtdesc:
     movl $start, %esp
     call bootmain
 ```
+##练习4
+###4.1 bootloader如何读取硬盘扇区的？
+bootmain.c中实现了readsect函数，其功能为读取一个硬盘扇区。它首先向0x1F2到0x1F7中输出要读的扇区号，读取参数等信息，之后使用insl指令完成读取。
+此外还有readseg函数，读取多个扇区，实现是逐次调用readsect函数。
+###4.2 bootloader是如何加载ELF格式的OS？
+bootmain.c从1号扇区开始开始读取4K大小的数据到0x10000位置，之后通过magic number验证它是否是约定的ELF格式。如果是合法的ELF格式，bootloader从ELF段描述表中逐个读入指定的数据段到内存。然后调用ELF中描述的入口函数。
+###练习5：实现函数调用堆栈跟踪函数 （需要编程）
+```c
+	uint32_t ebp = read_ebp(), eip = read_eip();
+	int stackframe_iter, argument_iter;
+	for (stackframe_iter = 0; ebp != 0 && stackframe_iter < STACKFRAME_DEPTH; stackframe_iter ++) {
+		cprintf("ebp:%x eip:%x args:", ebp, eip);
+		for (argument_iter = 2; argument_iter < 6; argument_iter ++) {
+			cprintf("%x ", *((uint32_t*)ebp + argument_iter));
+		}
+		cprintf("\n");
+		print_debuginfo(eip - 1);
+		eip = *((uint32_t*)ebp + 1);
+		ebp = *((uint32_t*)ebp);
+	}
+```
+实现过程：按照所给注释实现。
+###练习6
+####6.1 中断描述符表（也可简称为保护模式下的中断向量表）中一个表项占多少字节？其中哪几位代表中断处理代码的入口？
+8字节。低16位为段内偏移量，[16,32)位为段选择子，两者共同构成终端处理代码入口。
+###6.2 请编程完善kern/trap/trap.c中对中断向量表进行初始化的函数idt_init。在idt_init函数中，依次对所有中断入口进行初始化。使用mmu.h中的SETGATE宏，填充idt数组内容。每个中断的入口由tools/vectors.c生成，使用trap.c中声明的vectors数组即可。
