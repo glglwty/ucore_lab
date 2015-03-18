@@ -1,6 +1,44 @@
 #Lab1实验报告
 2012011282 计22 王天一
-##练习1 
+##练习1
+###1.1 操作系统镜像文件ucore.img是如何一步一步生成的？(需要比较详细地解释Makefile中每一条相关命令和命令参数的含义，以及说明命令导致的结果)
+> 生成ucore.img
+> ```makefile
+> $(UCOREIMG): $(kernel) $(bootblock)
+> 	$(V)dd if=/dev/zero of=$@ count=10000
+> 	$(V)dd if=$(bootblock) of=$@ conv=notrunc
+> 	$(V)dd if=$(kernel) of=$@ seek=1 conv=notruc
+> ```
+> 可以看到最终步骤为直接将bootblock和kernel拼在一起。 bootblock从第0个扇区开始而kernel从第一个扇区开始。
+> > 生成bootblock
+> > ```makefile
+> > $(bootblock): $(call toobj,$(bootfiles)) | $(call totarget,sign)
+> >	@echo + ld $@
+> >	$(V)$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 $^ -o $(call toobj,bootblock)
+> >	@$(OBJDUMP) -S $(call objfile,bootblock) > $(call asmfile,bootblock)
+> >	@$(OBJCOPY) -S -O binary $(call objfile,bootblock) $(call outfile,bootblock)
+> >	@$(call totarget,sign) $(call outfile,bootblock) $(bootblock)
+> > ```
+> > 首先编译boot目录下的文件（bootasm.s, bootmain.c)，使用的关键参数为`-nostdinc -ggdb`，分别用于禁止标准头文件和生成调试信息。
+> >  之后bootasm.o和bootmain.o被ld链接。
+> >  ```makefile
+> >  ld -m    elf_i386 -nostdlib -N -e start -Ttext 0x7C00  obj/boot/bootasm.o obj/boot/bootmain.o -o obj/bootblock.o
+> >  ```
+> >  之后使用objcopy生成纯粹的内存拷贝，丢弃所有.o文件中的其他信息。
+> >  最后bootblock使用sign生成。sign向bootblock中复制objcopy产生的文件，并且填充规定的字节。  
+>  
+>  <br>
+> > 生成kernel
+> > ```makefile
+> > $(kernel): $(KOBJS)
+> >	@echo + ld $@
+> >	$(V)$(LD) $(LDFLAGS) -T tools/kernel.ld -o $@ $(KOBJS)
+> >	@$(OBJDUMP) -S $@ > $(call asmfile,kernel)
+> >	@$(OBJDUMP) -t $@ | $(SED) '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(call symfile,kernel)
+> > ```
+> > kern文件夹下的所有c代码都编译成.o文件之后，按照kernel.ld的指示链接，kernel.ld指示了各个数据段的内核虚拟地址。
+###1.2 一个被系统认为是符合规范的硬盘主引导扇区的特征是什么？
+共512字节，第510和511字节分别为0x55和0xAA。
 ##练习2
 ###2.1 从CPU加电后执行的第一条指令开始，单步跟踪BIOS的执行。
 gdb中反汇编bios的代码结果是错的，不知道为什么。参考答案后使用qemu的参数将执行到的代码输出到log文件中。
@@ -173,23 +211,13 @@ bootmain.c中实现了readsect函数，其功能为读取一个硬盘扇区。�
 此外还有readseg函数，读取多个扇区，实现是逐次调用readsect函数。
 ###4.2 bootloader是如何加载ELF格式的OS？
 bootmain.c从1号扇区开始开始读取4K大小的数据到0x10000位置，之后通过magic number验证它是否是约定的ELF格式。如果是合法的ELF格式，bootloader从ELF段描述表中逐个读入指定的数据段到内存。然后调用ELF中描述的入口函数。
-###练习5：实现函数调用堆栈跟踪函数 （需要编程）
-```c
-	uint32_t ebp = read_ebp(), eip = read_eip();
-	int stackframe_iter, argument_iter;
-	for (stackframe_iter = 0; ebp != 0 && stackframe_iter < STACKFRAME_DEPTH; stackframe_iter ++) {
-		cprintf("ebp:%x eip:%x args:", ebp, eip);
-		for (argument_iter = 2; argument_iter < 6; argument_iter ++) {
-			cprintf("%x ", *((uint32_t*)ebp + argument_iter));
-		}
-		cprintf("\n");
-		print_debuginfo(eip - 1);
-		eip = *((uint32_t*)ebp + 1);
-		ebp = *((uint32_t*)ebp);
-	}
-```
+##练习5：实现函数调用堆栈跟踪函数 （需要编程）
+见代码
 实现过程：按照所给注释实现。
-###练习6
-####6.1 中断描述符表（也可简称为保护模式下的中断向量表）中一个表项占多少字节？其中哪几位代表中断处理代码的入口？
+##练习6
+###6.1 中断描述符表（也可简称为保护模式下的中断向量表）中一个表项占多少字节？其中哪几位代表中断处理代码的入口？
 8字节。低16位为段内偏移量，[16,32)位为段选择子，两者共同构成终端处理代码入口。
-###6.2 请编程完善kern/trap/trap.c中对中断向量表进行初始化的函数idt_init。在idt_init函数中，依次对所有中断入口进行初始化。使用mmu.h中的SETGATE宏，填充idt数组内容。每个中断的入口由tools/vectors.c生成，使用trap.c中声明的vectors数组即可。
+###6.2 请编程完善kern/trap/trap.c中对中断向量表进行初始化的函数idt_ini。在idt_init函数中，依次对所有中断入口进行初始化。使用mmu.h中的SETGATE宏，填充idt数组内容。每个中断的入口由tools/vectors.c生成，使用trap.c中声明的vectors数组即可。
+见代码
+###6.3 请编程完善trap.c中的中断处理函数trap，在对时钟中断进行处理的部分填写trap函数中处理时钟中断的部分，使操作系统每遇到100次时钟中断后，调用print_ticks子程序，向屏幕上打印一行文字”100 ticks”。
+见代码

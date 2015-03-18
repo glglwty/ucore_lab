@@ -364,6 +364,12 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     *   mm->pgdir : the PDT of these vma
     *
     */
+    ptep = get_pte(mm->pgdir, addr, 1);
+    if (*ptep == 0) {
+    	pgdir_alloc_page(mm->pgdir, addr, perm);
+    }
+
+
 #if 0
     /*LAB3 EXERCISE 1: YOUR CODE*/
     ptep = ???              //(1) try to find a pte, if pte's PT(Page Table) isn't existed, then create a PT.
