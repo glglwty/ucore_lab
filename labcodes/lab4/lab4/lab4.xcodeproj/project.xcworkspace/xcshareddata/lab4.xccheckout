@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>8FA441DB-3B67-4D6A-94E0-199F24FF0E20</string>
+	<key>IDESourceControlProjectName</key>
+	<string>lab4</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>E746DF32FE69BE9D4C90C40877AD987B0906DF7F</key>
+		<string>https://github.com/glglwty/ucore_lab.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>labcodes/lab4/lab4/lab4.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>E746DF32FE69BE9D4C90C40877AD987B0906DF7F</key>
+		<string>../../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/glglwty/ucore_lab.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>E746DF32FE69BE9D4C90C40877AD987B0906DF7F</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>E746DF32FE69BE9D4C90C40877AD987B0906DF7F</string>
+			<key>IDESourceControlWCCName</key>
+			<string>ucore_lab</string>
+		</dict>
+	</array>
+</dict>
+</plist>
