@@ -59,7 +59,7 @@ struct proc_struct {
 #define le2proc(le, member)         \
     to_struct((le), struct proc_struct, member)
 
-extern struct proc_struct *idleproc, *initproc, *current;
+extern struct proc_struct *idleproc, *xinitproc, *current;
 
 void proc_init(void);
 void proc_run(struct proc_struct *proc);
