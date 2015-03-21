@@ -141,7 +141,7 @@ alloc_proc(void) {
          */
         //2012011282 begin
         proc->rq = NULL;
-        list_init(&proc->run_link);
+        proc->run_link.prev = proc->run_link.next = NULL;
         proc->time_slice = 0;
         skew_heap_init(&proc->lab6_run_pool);
         proc->lab6_stride = 0;

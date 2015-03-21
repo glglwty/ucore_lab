@@ -248,7 +248,7 @@ trap_dispatch(struct trapframe *tf) {
             run_timer_list();
 
             //2012011282 end
-        /* LAB6 YOUR CODE */
+        /* LAB6 2012011282 */
         /* IMPORTANT FUNCTIONS:
 	     * run_timer_list
 	     *----------------------
