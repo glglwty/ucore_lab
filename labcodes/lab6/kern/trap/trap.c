@@ -42,21 +42,30 @@ static struct pseudodesc idt_pd = {
 /* idt_init - initialize IDT to each of the entry points in kern/trap/vectors.S */
 void
 idt_init(void) {
-     /* LAB1 YOUR CODE : STEP 2 */
-     /* (1) Where are the entry addrs of each Interrupt Service Routine (ISR)?
-      *     All ISR's entry addrs are stored in __vectors. where is uintptr_t __vectors[] ?
-      *     __vectors[] is in kern/trap/vector.S which is produced by tools/vector.c
-      *     (try "make" command in lab1, then you will find vector.S in kern/trap DIR)
-      *     You can use  "extern uintptr_t __vectors[];" to define this extern variable which will be used later.
-      * (2) Now you should setup the entries of ISR in Interrupt Description Table (IDT).
-      *     Can you see idt[256] in this file? Yes, it's IDT! you can use SETGATE macro to setup each item of IDT
-      * (3) After setup the contents of IDT, you will let CPU know where is the IDT by using 'lidt' instruction.
-      *     You don't know the meaning of this instruction? just google it! and check the libs/x86.h to know more.
-      *     Notice: the argument of lidt is idt_pd. try to find it!
-      */
-     /* LAB5 YOUR CODE */ 
-     //you should update your lab1 code (just add ONE or TWO lines of code), let user app to use syscall to get the service of ucore
-     //so you should setup the syscall interrupt gate in here
+    /* LAB1 2012011282 : STEP 2 */
+    /* (1) Where are the entry addrs of each Interrupt Service Routine (ISR)?
+     *     All ISR's entry addrs are stored in __vectors. where is uintptr_t __vectors[] ?
+     *     __vectors[] is in kern/trap/vector.S which is produced by tools/vector.c
+     *     (try "make" command in lab1, then you will find vector.S in kern/trap DIR)
+     *     You can use  "extern uintptr_t __vectors[];" to define this extern variable which will be used later.
+     * (2) Now you should setup the entries of ISR in Interrupt Description Table (IDT).
+     *     Can you see idt[256] in this file? Yes, it's IDT! you can use SETGATE macro to setup each item of IDT
+     * (3) After setup the contents of IDT, you will let CPU know where is the IDT by using 'lidt' instruction.
+     *     You don't know the meaning of this instruction? just google it! and check the libs/x86.h to know more.
+     *     Notice: the argument of lidt is idt_pd. try to find it!
+     */
+    //2012011282 begin
+    extern uintptr_t __vectors[];
+    int vector_iter;
+    for (vector_iter = 0; vector_iter < sizeof(idt) / sizeof(struct gatedesc); vector_iter ++) {
+        SETGATE(idt[vector_iter], 0, GD_KTEXT, __vectors[vector_iter], DPL_KERNEL);
+    }
+    SETGATE(idt[T_SYSCALL], 1, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    lidt(&idt_pd);
+    //2012011282 end
+    /* LAB5 2012011282 */
+    //you should update your lab1 code (just add ONE or TWO lines of code), let user app to use syscall to get the service of ucore
+    //so you should setup the syscall interrupt gate in here
 }
 
 static const char *
@@ -214,16 +223,31 @@ trap_dispatch(struct trapframe *tf) {
     LAB3 : If some page replacement algorithm(such as CLOCK PRA) need tick to change the priority of pages,
     then you can add code here. 
 #endif
-        /* LAB1 YOUR CODE : STEP 3 */
-        /* handle the timer interrupt */
-        /* (1) After a timer interrupt, you should record this event using a global variable (increase it), such as ticks in kern/driver/clock.c
-         * (2) Every TICK_NUM cycle, you can print some info using a funciton, such as print_ticks().
-         * (3) Too Simple? Yes, I think so!
-         */
-        /* LAB5 YOUR CODE */
-        /* you should upate you lab1 code (just add ONE or TWO lines of code):
-         *    Every TICK_NUM cycle, you should set current process's current->need_resched = 1
-         */
+            /* LAB1 2012011282 : STEP 3 */
+            /* handle the timer interrupt */
+            /* (1) After a timer interrupt, you should record this event using a global variable (increase it), such as ticks in kern/driver/clock.c
+             * (2) Every TICK_NUM cycle, you can print some info using a funciton, such as print_ticks().
+             * (3) Too Simple? Yes, I think so!
+             */
+            /* LAB5 2012011282 */
+            /* you should upate you lab1 code (just add ONE or TWO lines of code):
+             *    Every TICK_NUM cycle, you should set current process's current->need_resched = 1
+             */
+
+            //2012011282 begin
+            /*
+            if (ticks++ == TICK_NUM) {
+                ticks = 0;
+                //print_ticks();
+                assert(current != NULL);
+                current->need_resched = 1;
+            }
+            */
+            ticks++;
+            assert(current != NULL);
+            run_timer_list();
+
+            //2012011282 end
         /* LAB6 YOUR CODE */
         /* IMPORTANT FUNCTIONS:
 	     * run_timer_list

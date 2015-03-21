@@ -205,7 +205,6 @@ default_free_pages(struct Page *base, size_t n) {
         base->property = 0;
     }
     //2012011282 end
-
 }
 
 static size_t
