@@ -53,6 +53,15 @@ idt_init(void) {
       *     You don't know the meaning of this instruction? just google it! and check the libs/x86.h to know more.
       *     Notice: the argument of lidt is idt_pd. try to find it!
       */
+    //2012011282 begin
+    extern uintptr_t __vectors[];
+    int vector_iter;
+    for (vector_iter = 0; vector_iter < sizeof(idt) / sizeof(struct gatedesc); vector_iter ++) {
+        SETGATE(idt[vector_iter], 0, GD_KTEXT, __vectors[vector_iter], DPL_KERNEL);
+    }
+    SETGATE(idt[T_SYSCALL], 1, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    lidt(&idt_pd);
+    //2012011282 end
      /* LAB5 YOUR CODE */ 
      //you should update your lab1 code (just add ONE or TWO lines of code), let user app to use syscall to get the service of ucore
      //so you should setup the syscall interrupt gate in here
@@ -182,6 +191,7 @@ pgfault_handler(struct trapframe *tf) {
 static volatile int in_swap_tick_event = 0;
 extern struct mm_struct *check_mm_struct;
 
+int tick_counter = 0;
 static void
 trap_dispatch(struct trapframe *tf) {
     char c;
@@ -223,8 +233,16 @@ trap_dispatch(struct trapframe *tf) {
         /* you should upate you lab1 code (just add ONE or TWO lines of code):
          *    Every TICK_NUM cycle, you should set current process's current->need_resched = 1
          */
-  
+
+        //2012011282 begin
+        if (tick_counter ++ == TICK_NUM) {
+            print_ticks();
+            tick_counter = 0;
+            assert(current != NULL);
+            current->need_resched = 1;
+        }
         break;
+        //2012011282 end
     case IRQ_OFFSET + IRQ_COM1:
         c = cons_getc();
         cprintf("serial [%03d] %c\n", c, c);
