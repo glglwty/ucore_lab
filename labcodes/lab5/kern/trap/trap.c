@@ -235,9 +235,9 @@ trap_dispatch(struct trapframe *tf) {
          */
 
         //2012011282 begin
-        if (tick_counter ++ == TICK_NUM) {
-            print_ticks();
-            tick_counter = 0;
+        if (ticks++ == TICK_NUM) {
+            ticks = 0;
+            //print_ticks();
             assert(current != NULL);
             current->need_resched = 1;
         }
