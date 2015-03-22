@@ -23,37 +23,55 @@ monitor_init (monitor_t * mtp, size_t num_cv) {
 }
 
 // Unlock one of threads waiting on the condition variable. 
-void 
+void
 cond_signal (condvar_t *cvp) {
-   //LAB7 EXERCISE1: YOUR CODE
-   cprintf("cond_signal begin: cvp %x, cvp->count %d, cvp->owner->next_count %d\n", cvp, cvp->count, cvp->owner->next_count);  
-  /*
-   *      cond_signal(cv) {
-   *          if(cv.count>0) {
-   *             mt.next_count ++;
-   *             signal(cv.sem);
-   *             wait(mt.next);
-   *             mt.next_count--;
-   *          }
-   *       }
-   */
-   cprintf("cond_signal end: cvp %x, cvp->count %d, cvp->owner->next_count %d\n", cvp, cvp->count, cvp->owner->next_count);
+    //LAB7 EXERCISE1: 2012011282
+    cprintf("cond_signal begin: cvp %x, cvp->count %d, cvp->owner->next_count %d\n", cvp, cvp->count, cvp->owner->next_count);
+    /*
+     *      cond_signal(cv) {
+     *          if(cv.count>0) {
+     *             mt.next_count ++;
+     *             signal(cv.sem);
+     *             wait(mt.next);
+     *             mt.next_count--;
+     *          }
+     *       }
+     */
+    //2012011282 begin
+    if (cvp->count > 0) {
+        cvp->owner->next_count ++;
+        up(&cvp->sem);
+        down(&cvp->owner->next);
+        cvp->owner->next_count --;
+    }
+    //2012011282 end
+    cprintf("cond_signal end: cvp %x, cvp->count %d, cvp->owner->next_count %d\n", cvp, cvp->count, cvp->owner->next_count);
 }
 
-// Suspend calling thread on a condition variable waiting for condition Atomically unlocks 
+// Suspend calling thread on a condition variable waiting for condition Atomically unlocks
 // mutex and suspends calling thread on conditional variable after waking up locks mutex. Notice: mp is mutex semaphore for monitor's procedures
 void
 cond_wait (condvar_t *cvp) {
-    //LAB7 EXERCISE1: YOUR CODE
+    //LAB7 EXERCISE1: 2012011282
     cprintf("cond_wait begin:  cvp %x, cvp->count %d, cvp->owner->next_count %d\n", cvp, cvp->count, cvp->owner->next_count);
-   /*
-    *         cv.count ++;
-    *         if(mt.next_count>0)
-    *            signal(mt.next)
-    *         else
-    *            signal(mt.mutex);
-    *         wait(cv.sem);
-    *         cv.count --;
-    */
+    /*
+     *         cv.count ++;
+     *         if(mt.next_count>0)
+     *            signal(mt.next)
+     *         else
+     *            signal(mt.mutex);
+     *         wait(cv.sem);
+     *         cv.count --;
+     */
+    //2012011282 begin
+    cvp->count ++;
+    if (cvp->owner->next_count > 0) {
+        up(&cvp->owner->next);
+    } else {
+        up(&cvp->owner->mutex);
+    }
+    down(&cvp->sem);
+    cvp->count --;
+    //2012011282 end
     cprintf("cond_wait end:  cvp %x, cvp->count %d, cvp->owner->next_count %d\n", cvp, cvp->count, cvp->owner->next_count);
 }
