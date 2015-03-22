@@ -71,7 +71,6 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
     //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
     //(2)  set the addr of addr of this page to ptr_page
     //2012011282 begin
-
     list_entry_t *target = list_next(head);
     assert(target != head);
     list_del(target);

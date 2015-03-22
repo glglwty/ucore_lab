@@ -446,7 +446,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
      * DEFINEs:
      *   PTE_P           0x001                   // page table/directory entry flags bit : Present
      */
-
+    //2012011282
     if (*ptep & PTE_P) {
         struct Page *page = pte2page(*ptep);
         if (page_ref_dec(page) == 0) {
@@ -455,6 +455,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
         *ptep = 0;
         tlb_invalidate(pgdir, la);
     }
+    //2012011282
 #if 0
     if (0) {                      //(1) check if this page table entry is present
         struct Page *page = NULL; //(2) find corresponding page to pte
@@ -545,11 +546,10 @@ copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
              * (3) memory copy from src_kvaddr to dst_kvaddr, size is PGSIZE
              * (4) build the map of phy addr of  nage with the linear addr start
              */
-            //2012011282 BEGIN
+            //2012011282 begin
             memcpy(page2kva(npage), page2kva(page), PGSIZE);
             ret = page_insert(to, npage, start, perm);
-
-            //2012011282 ENDS
+            //2012011282 end
         assert(ret == 0);
         }
         start += PGSIZE;
