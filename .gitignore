@@ -20,4 +20,5 @@ a.out
 chytesting
 .*
 !/.gitignore
-
+disk0
+*.orig
