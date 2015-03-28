@@ -10,7 +10,7 @@
 #define __noreturn __attribute__((noreturn))
 
 #define CHAR_BIT        8
-
+#define NCPU 8
 /* Represents true-or-false values */
 typedef int bool;
 

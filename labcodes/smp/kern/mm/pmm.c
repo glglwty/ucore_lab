@@ -11,6 +11,7 @@
 #include <swap.h>
 #include <vmm.h>
 #include <kmalloc.h>
+#include "mp.h"
 
 /* *
  * Task State Segment:
@@ -32,7 +33,7 @@
  * mode, the x86 CPU will look in the TSS for SS0 and ESP0 and load their value
  * into SS and ESP respectively.
  * */
-static struct taskstate ts = {0};
+//static struct taskstate ts = {0};
 
 // virtual address of physicall page array
 struct Page *pages;
@@ -76,7 +77,8 @@ pde_t * const vpd = (pde_t *)PGADDR(PDX(VPT), PDX(VPT), 0);
  *   - 0x20:  user data segment
  *   - 0x28:  defined for tss, initialized in gdt_init
  * */
-static struct segdesc gdt[] = {
+//2012011282 : this one should be replaced with cpu->gdt
+/* static struct segdesc gdt[] = {
     SEG_NULL,
     [SEG_KTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_KERNEL),
     [SEG_KDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_KERNEL),
@@ -88,6 +90,7 @@ static struct segdesc gdt[] = {
 static struct pseudodesc gdt_pd = {
     sizeof(gdt) - 1, (uintptr_t)gdt
 };
+*/
 
 static void check_alloc_page(void);
 static void check_pgdir(void);
@@ -109,21 +112,33 @@ lgdt(struct pseudodesc *pd) {
     asm volatile ("ljmp %0, $1f\n 1:\n" :: "i" (KERNEL_CS));
 }
 
+static inline void lgdt2(struct segdesc* base, uint16_t size) {
+    struct pseudodesc desc = {size - 1, base};
+    lgdt(&desc);
+}
+
+static inline void
+loadgs(uint16_t v)
+{
+    asm volatile("movw %0, %%gs" : : "r" (v));
+}
+
 /* *
  * load_esp0 - change the ESP0 in default task state segment,
  * so that we can use different kernel stack when we trap frame
  * user to kernel.
  * */
+/*
 void
 load_esp0(uintptr_t esp0) {
     ts.ts_esp0 = esp0;
 }
+*/
 
-/* gdt_init - initialize the default GDT and TSS */
-static void
-gdt_init(void) {
+
+void gdt_init(void) {
+    /*
     // set boot kernel stack and default SS0
-    load_esp0((uintptr_t)bootstacktop);
     ts.ts_ss0 = KERNEL_DS;
 
     // initialize the TSS filed of the gdt
@@ -133,6 +148,18 @@ gdt_init(void) {
     lgdt(&gdt_pd);
 
     // load the TSS
+    ltr(GD_TSS);
+    */
+    //clear! clear! smp is coming!
+    struct cpu *c = &cpus[cpunum()];
+    c->ts.ts_esp0 = (uintptr_t)bootstacktop;
+    c->gdt[SEG_KTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_KERNEL);
+    c->gdt[SEG_KDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_KERNEL);
+    c->gdt[SEG_UTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_USER);
+    c->gdt[SEG_UDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_USER);
+    c->gdt[SEG_CPU] = SEG(STA_W, (uintptr_t)(&c->cpu), 8, DPL_KERNEL);
+    c->gdt[SEG_TSS] = SEGTSS(STS_T32A, (uintptr_t)&c->ts, sizeof(c->ts), DPL_KERNEL);
+    lgdt2(c->gdt, sizeof(c->gdt));
     ltr(GD_TSS);
 }
 

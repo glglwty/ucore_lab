@@ -1,7 +1,7 @@
 #ifndef __LIBS_X86_H__
 #define __LIBS_X86_H__
 
-#include <defs.h>
+#include "defs.h"
 
 #define do_div(n, base) ({                                          \
             unsigned long __upper, __low, __high, __mod, __base;    \
@@ -306,5 +306,18 @@ __memcpy(void *dst, const void *src, size_t n) {
 }
 #endif /* __HAVE_ARCH_MEMCPY */
 
+//warning! smp!
+static inline uint32_t
+xchg(volatile uintptr_t *addr, uint32_t newval)
+{
+    uint32_t result;
+
+    // The + in "+m" denotes a read-modify-write operand.
+    asm volatile("lock; xchgl %0, %1" :
+    "+m" (*addr), "=a" (result) :
+    "1" (newval) :
+    "cc");
+    return result;
+}
 #endif /* !__LIBS_X86_H__ */
 

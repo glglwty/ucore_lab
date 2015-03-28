@@ -159,6 +159,7 @@ KINCLUDE	+= kern/debug/ \
 			   kern/driver/ \
 			   kern/trap/ \
 			   kern/mm/ \
+			   kerm/mp/ \
 			   kern/libs/ \
 			   kern/sync/ \
 			   kern/fs/    \
@@ -177,6 +178,7 @@ KSRCDIR		+= kern/init \
 			   kern/driver \
 			   kern/trap \
 			   kern/mm \
+			   kern/mp \
 			   kern/sync \
 			   kern/fs    \
 			   kern/process \

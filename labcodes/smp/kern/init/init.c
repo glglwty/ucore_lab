@@ -13,6 +13,9 @@
 #include <swap.h>
 #include <proc.h>
 #include <fs.h>
+#include "mp.h"
+#include "kmalloc.h"
+
 #include <kmonitor.h>
 
 int kern_init(void) __attribute__((noreturn));
@@ -35,8 +38,13 @@ kern_init(void) {
 
     pmm_init();                 // init physical memory management
 
+    mpinit();//mp
+    lapicinit();//mp
+
+
     pic_init();                 // init interrupt controller
-    idt_init();                 // init interrupt descriptor table
+
+    ioapicinit();//mp
 
     vmm_init();                 // init virtual memory management
     sched_init();               // init scheduler
@@ -115,3 +123,59 @@ lab1_switch_test(void) {
     lab1_print_cur_status();
 }
 
+//warning! smp!
+
+static void
+mpenter(void)
+{
+    lcr3(boot_cr3);
+    gdt_init();
+    lapicinit();
+    mpmain();
+}
+
+// Common CPU setup code.
+static void
+mpmain(void)
+{
+    cprintf("cpu%d: starting\n", cpu->id);
+    idt_init();                 // init interrupt descriptor table
+    xchg(&cpu->started, 1); // tell startothers() we're up
+    cpu_idle();     // start running processes
+}
+
+
+// Start the non-boot (AP) processors.
+static void
+startothers(void)
+{
+    extern uint8_t _binary_entryother_start[], _binary_entryother_size[];
+    uint8_t *code;
+    struct cpu *c;
+    char *stack;
+
+    // Write entry code to unused memory at 0x7000.
+    // The linker has placed the image of entryother.S in
+    // _binary_entryother_start.
+    code = KADDR(0x7000);
+    memmove(code, _binary_entryother_start, (uint32_t)_binary_entryother_size);
+
+    for(c = cpus; c < cpus+ncpu; c++){
+        if(c == cpus+cpunum())  // We've started already.
+            continue;
+
+        // Tell entryother.S what stack to use, where to enter, and what
+        // pgdir to use. We cannot use kpgdir yet, because the AP processor
+        // is running in low  memory, so we use entrypgdir for the APs too.
+        stack = kmalloc(KSTACKSIZE);
+        *(void**)(code-4) = stack + KSTACKSIZE;
+        *(void**)(code-8) = mpenter;
+        *(int**)(code-12) = (void *)boot_cr3; //boot_cr3 is a physical address, remember
+
+        lapicstartap(c->id, PADDR(code));
+
+        // wait for cpu to finish mpmain()
+        while(c->started == 0)
+            ;
+    }
+}
