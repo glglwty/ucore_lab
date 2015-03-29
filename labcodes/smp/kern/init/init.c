@@ -58,9 +58,6 @@ kern_init(void) {
     idt_init();
 
 
-    startothers();   // start other processors
-
-    while(1);
     cprintf("idt init done\n");
     vmm_init();                 // init virtual memory management
 
@@ -80,22 +77,12 @@ kern_init(void) {
     cprintf("swap_init done\n");
     fs_init();                  // init fs
 
-
-/*
-    cprintf("fs_init done\n");
-    clock_init();               // init clock interrupt
-
-    cprintf("clock_init done\n");
-    intr_enable();              // enable irq interrupt
-
-    cprintf("intr_enable done\n");
-    */
-
     extern int ismp;
     if(!ismp)
         clock_init();           // init clock interrupt
     startothers();   // start other processors
-    
+    cprintf("All guys chose to wake up\n");
+
     mpmain();                 // run idle process
 }
 
@@ -161,21 +148,21 @@ lab1_switch_test(void) {
 //warning! smp!
 
 void __attribute__((noreturn))
-mpenter(void)
+mpenter(int cpuid)
 {
-    cprintf("ap: a newcomer in mpenter\n");
+    cprintf("ap: %d good morning sir.\n", cpuid);
+    cpu[cpuid].id = cpuid;
     boot_pgdir[0] = boot_pgdir[PDX(KERNBASE)];
     cprintf("ap: before paging\n");
     enable_paging();
     cprintf("ap: enable paging done\n");
-    gdt_init();
+    gdt_init(cpuid);
     cprintf("ap: gdt_init done\n");
     boot_pgdir[0] = 0;
     cprintf("set boot_pgdir back\n");
     lapicinit();
     cprintf("ap: lapicinit done\n");
     idt_init();                 // init interrupt descriptor table
-
     cprintf("ap: idt init done\n");
     mpmain();
 }
@@ -186,7 +173,7 @@ mpmain(void)
 {
     cprintf("cpu%d: starting\n", cpu->id);
     xchg(&cpu->started, 1); // tell startothers() we're up
-    while(1);
+    intr_enable();              // enable irq interrupt
     cpu_idle();     // start running processes
 }
 
@@ -195,7 +182,7 @@ mpmain(void)
 void
 startothers(void)
 {
-    cprintf("startothers");
+    cprintf("startothers\n");
     extern uint8_t _binary_obj_entryother_o_start[], _binary_obj_entryother_o_size[];
     uint8_t *code;
     struct cpu *c;
@@ -217,9 +204,10 @@ startothers(void)
         stack = kmalloc(KSTACKSIZE);
         *(void**)(code-4) = stack + KSTACKSIZE;  //kva
         *(void**)(code-8) = mpenter; //kva
-        *(int**)(code-12) = (void *)boot_cr3; //useless here..
+        *(int**)(code-12) = c->id;
 
         lapicstartap(c->id, PADDR(code));
+        cprintf("waking up cpu %d\n", c->id);
 
         // wait for cpu to finish mpmain()
         while(c->started == 0)

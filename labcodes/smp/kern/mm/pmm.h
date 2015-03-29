@@ -28,7 +28,7 @@ extern uintptr_t boot_cr3;
 
 void pmm_init(void);
 
-void gdt_init(void);
+void gdt_init(int cpuid);
 void enable_paging(void);
 
 struct Page *alloc_pages(size_t n);

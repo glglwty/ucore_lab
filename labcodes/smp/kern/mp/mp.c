@@ -112,6 +112,7 @@ mpinit(void)
     return;
   ismp = 1;
   lapic = (uint32_t*)(conf->lapicaddr);
+    cprintf("lapic addr: %x\n", lapic);
   for(p=(uint8_t*)(conf+1), e=(uint8_t*)conf+conf->length; p<e; ){
     switch(*p){
     case MPPROC:
