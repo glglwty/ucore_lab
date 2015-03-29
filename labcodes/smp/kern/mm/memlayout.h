@@ -68,6 +68,9 @@
  *
  * */
 
+//from xv6
+#define DEVSPACE 0xFE000000         // Other devices are at high addresses
+
 /* All physical memory mapped at this address */
 #define KERNBASE            0xC0000000
 #define KMEMSIZE            0x38000000                  // the maximum amount of physical memory

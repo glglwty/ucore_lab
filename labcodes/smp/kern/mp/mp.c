@@ -111,7 +111,7 @@ mpinit(void)
   if((conf = mpconfig(&mp)) == 0)
     return;
   ismp = 1;
-  lapic = (uint32_t*)conf->lapicaddr;
+  lapic = (uint32_t*)(conf->lapicaddr);
   for(p=(uint8_t*)(conf+1), e=(uint8_t*)conf+conf->length; p<e; ){
     switch(*p){
     case MPPROC:
@@ -143,6 +143,7 @@ mpinit(void)
   }
   if(!ismp){
     // Didn't like what we found; fall back to no MP.
+      cprintf("no mp\n");
     ncpu = 1;
     lapic = 0;
     ioapicid = 0;
@@ -155,4 +156,5 @@ mpinit(void)
     outb(0x22, 0x70);   // Select IMCR
     outb(0x23, inb(0x23) | 1);  // Mask external interrupts.
   }
+    cprintf("mp mode, total cpu number:%d\n", ncpu);
 }

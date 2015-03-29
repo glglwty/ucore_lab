@@ -13,7 +13,7 @@
 #include <swap.h>
 #include <proc.h>
 #include <fs.h>
-#include "mp.h"
+#include "../mp/mp.h"
 #include "kmalloc.h"
 
 #include <kmonitor.h>
@@ -26,8 +26,9 @@ int
 kern_init(void) {
     extern char edata[], end[];
     memset(edata, 0, end - edata);
-
+    
     cons_init();                // init the console
+
 
     const char *message = "(THU.CST) os is loading ...";
     cprintf("%s\n\n", message);
@@ -37,31 +38,65 @@ kern_init(void) {
     grade_backtrace();
 
     pmm_init();                 // init physical memory management
-
+    cprintf("pmm_init done\n");
     mpinit();//mp
+    cprintf("mpinit done\n");
+
+
     lapicinit();//mp
 
+    cprintf("lapicinip start done\n");
 
     pic_init();                 // init interrupt controller
 
+    cprintf("pic_init_done\n");
+
     ioapicinit();//mp
 
+    cprintf("ioapicinit done\n");
+
+    idt_init();
+
+
+    startothers();   // start other processors
+
+    while(1);
+    cprintf("idt init done\n");
     vmm_init();                 // init virtual memory management
+
+    cprintf("vmm_init done\n");
     sched_init();               // init scheduler
+
+    cprintf("sched_init done\n");
     proc_init();                // init process table
+
+    cprintf("proc_init done\n");
     
     ide_init();                 // init ide devices
+
+    cprintf("ide_init done\n");
     swap_init();                // init swap
+
+    cprintf("swap_init done\n");
     fs_init();                  // init fs
-    
+
+
+/*
+    cprintf("fs_init done\n");
     clock_init();               // init clock interrupt
+
+    cprintf("clock_init done\n");
     intr_enable();              // enable irq interrupt
 
-    //LAB1: CAHLLENGE 1 If you try to do it, uncomment lab1_switch_test()
-    // user/kernel mode switch test
-    //lab1_switch_test();
+    cprintf("intr_enable done\n");
+    */
+
+    extern int ismp;
+    if(!ismp)
+        clock_init();           // init clock interrupt
+    startothers();   // start other processors
     
-    cpu_idle();                 // run idle process
+    mpmain();                 // run idle process
 }
 
 void __attribute__((noinline))
@@ -125,40 +160,52 @@ lab1_switch_test(void) {
 
 //warning! smp!
 
-static void
+void __attribute__((noreturn))
 mpenter(void)
 {
-    lcr3(boot_cr3);
+    cprintf("ap: a newcomer in mpenter\n");
+    boot_pgdir[0] = boot_pgdir[PDX(KERNBASE)];
+    cprintf("ap: before paging\n");
+    enable_paging();
+    cprintf("ap: enable paging done\n");
     gdt_init();
+    cprintf("ap: gdt_init done\n");
+    boot_pgdir[0] = 0;
+    cprintf("set boot_pgdir back\n");
     lapicinit();
+    cprintf("ap: lapicinit done\n");
+    idt_init();                 // init interrupt descriptor table
+
+    cprintf("ap: idt init done\n");
     mpmain();
 }
 
 // Common CPU setup code.
-static void
+void __attribute__((noreturn))
 mpmain(void)
 {
     cprintf("cpu%d: starting\n", cpu->id);
-    idt_init();                 // init interrupt descriptor table
     xchg(&cpu->started, 1); // tell startothers() we're up
+    while(1);
     cpu_idle();     // start running processes
 }
 
 
 // Start the non-boot (AP) processors.
-static void
+void
 startothers(void)
 {
-    extern uint8_t _binary_entryother_start[], _binary_entryother_size[];
+    cprintf("startothers");
+    extern uint8_t _binary_obj_entryother_o_start[], _binary_obj_entryother_o_size[];
     uint8_t *code;
     struct cpu *c;
     char *stack;
 
     // Write entry code to unused memory at 0x7000.
     // The linker has placed the image of entryother.S in
-    // _binary_entryother_start.
+    // _binary_entryother_obj_start.
     code = KADDR(0x7000);
-    memmove(code, _binary_entryother_start, (uint32_t)_binary_entryother_size);
+    memmove(code, _binary_obj_entryother_o_start, (uint32_t) _binary_obj_entryother_o_size);
 
     for(c = cpus; c < cpus+ncpu; c++){
         if(c == cpus+cpunum())  // We've started already.
@@ -168,9 +215,9 @@ startothers(void)
         // pgdir to use. We cannot use kpgdir yet, because the AP processor
         // is running in low  memory, so we use entrypgdir for the APs too.
         stack = kmalloc(KSTACKSIZE);
-        *(void**)(code-4) = stack + KSTACKSIZE;
-        *(void**)(code-8) = mpenter;
-        *(int**)(code-12) = (void *)boot_cr3; //boot_cr3 is a physical address, remember
+        *(void**)(code-4) = stack + KSTACKSIZE;  //kva
+        *(void**)(code-8) = mpenter; //kva
+        *(int**)(code-12) = (void *)boot_cr3; //useless here..
 
         lapicstartap(c->id, PADDR(code));
 

@@ -11,7 +11,7 @@
 #include <swap.h>
 #include <vmm.h>
 #include <kmalloc.h>
-#include "mp.h"
+#include "../mp/mp.h"
 
 /* *
  * Task State Segment:
@@ -113,7 +113,7 @@ lgdt(struct pseudodesc *pd) {
 }
 
 static inline void lgdt2(struct segdesc* base, uint16_t size) {
-    struct pseudodesc desc = {size - 1, base};
+    struct pseudodesc desc = {size - 1, (uintptr_t)base};
     lgdt(&desc);
 }
 
@@ -128,12 +128,10 @@ loadgs(uint16_t v)
  * so that we can use different kernel stack when we trap frame
  * user to kernel.
  * */
-/*
 void
 load_esp0(uintptr_t esp0) {
-    ts.ts_esp0 = esp0;
+    cpu->ts.ts_esp0 = esp0;
 }
-*/
 
 
 void gdt_init(void) {
@@ -151,16 +149,38 @@ void gdt_init(void) {
     ltr(GD_TSS);
     */
     //clear! clear! smp is coming!
+    cprintf("I'm in gdt_init, %d\n", cpunum());
     struct cpu *c = &cpus[cpunum()];
-    c->ts.ts_esp0 = (uintptr_t)bootstacktop;
+
+    c->ts.ts_ss0 = KERNEL_DS;
+    if (cpunum() == 0) {
+        c->ts.ts_esp0 = (uintptr_t)bootstacktop;
+    } else {
+        c->ts.ts_esp0 = (uintptr_t )(*((void**)(KADDR(0x7000) - 4)) - KSTACKSIZE);
+    }
+
+    cprintf("set ts_esp0 finished %d\n", cpunum());
+
     c->gdt[SEG_KTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_KERNEL);
     c->gdt[SEG_KDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_KERNEL);
     c->gdt[SEG_UTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_USER);
     c->gdt[SEG_UDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_USER);
+
     c->gdt[SEG_CPU] = SEG(STA_W, (uintptr_t)(&c->cpu), 8, DPL_KERNEL);
     c->gdt[SEG_TSS] = SEGTSS(STS_T32A, (uintptr_t)&c->ts, sizeof(c->ts), DPL_KERNEL);
+
+    cprintf("before lgdt, cpuid%d\n", cpunum());
     lgdt2(c->gdt, sizeof(c->gdt));
-    ltr(GD_TSS);
+
+    cprintf(" lgdt done, cpuid%d\n", cpunum());
+    loadgs(GD_CPU);
+
+    cprintf("loadgs done, cpuid%d\n", cpunum());
+    ltr(GD_TSS);  //This should be checked. TODO
+
+    cprintf("ltr done, cpuid%d\n", cpunum());
+    cpu = c;
+    current = 0;
 }
 
 //init_pmm_manager - initialize a pmm_manager instance
@@ -279,7 +299,7 @@ page_init(void) {
     }
 }
 
-static void
+void
 enable_paging(void) {
     lcr3(boot_cr3);
 
@@ -321,6 +341,17 @@ boot_alloc_page(void) {
     return page2kva(p);
 }
 
+//initial map (and final map ...) for pmm_init
+static struct kmap {
+    void *virt;
+    uint32_t phys_start;
+    uint32_t phys_end;
+    int perm;
+} kmap[] = {
+        { (void *)KERNBASE, 0, KMEMSIZE,     PTE_W},
+        { (void*)DEVSPACE, DEVSPACE,      0,         PTE_W}, // more devices
+};
+
 //pmm_init - setup a pmm to manage physical memory, build PDT&PT to setup paging mechanism 
 //         - check the correctness of pmm & paging mechanism, print PDT&PT
 void
@@ -355,7 +386,10 @@ pmm_init(void) {
     // map all physical memory to linear memory with base linear addr KERNBASE
     //linear_addr KERNBASE~KERNBASE+KMEMSIZE = phy_addr 0~KMEMSIZE
     //But shouldn't use this map until enable_paging() & gdt_init() finished.
-    boot_map_segment(boot_pgdir, KERNBASE, KMEMSIZE, 0, PTE_W);
+    struct kmap* kmap_iter;
+    for (kmap_iter = kmap; kmap_iter < kmap + sizeof(kmap) / sizeof(struct kmap); kmap_iter ++) {
+        boot_map_segment(boot_pgdir, kmap_iter->virt, kmap_iter->phys_end - kmap_iter->phys_start, kmap_iter->phys_start, kmap_iter->perm);
+    }
 
     //temporary map: 
     //virtual_addr 3G~3G+4M = linear_addr 0~4M = linear_addr 3G~3G+4M = phy_addr 0~4M     
@@ -376,7 +410,6 @@ pmm_init(void) {
     check_boot_pgdir();
 
     print_pgdir();
-    
     kmalloc_init();
 
 }

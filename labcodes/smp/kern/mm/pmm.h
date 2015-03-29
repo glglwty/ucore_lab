@@ -29,6 +29,7 @@ extern uintptr_t boot_cr3;
 void pmm_init(void);
 
 void gdt_init(void);
+void enable_paging(void);
 
 struct Page *alloc_pages(size_t n);
 void free_pages(struct Page *base, size_t n);
@@ -42,7 +43,7 @@ struct Page *get_page(pde_t *pgdir, uintptr_t la, pte_t **ptep_store);
 void page_remove(pde_t *pgdir, uintptr_t la);
 int page_insert(pde_t *pgdir, struct Page *page, uintptr_t la, uint32_t perm);
 
-//void load_esp0(uintptr_t esp0);
+void load_esp0(uintptr_t esp0);
 void tlb_invalidate(pde_t *pgdir, uintptr_t la);
 struct Page *pgdir_alloc_page(pde_t *pgdir, uintptr_t la, uint32_t perm);
 void unmap_range(pde_t *pgdir, uintptr_t start, uintptr_t end);
