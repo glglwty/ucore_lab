@@ -69,7 +69,7 @@ start33:
   # Switch to the stack allocated by startothers()
   movl    $(start+KERNBASE-4), %eax
   movl    (%eax), %esp
-  push    (start+KERNBASE-12)
+  push    (start+KERNBASE-12)  #cpuid
 
   # Call mpenter()
   call	 *(start+KERNBASE-8)

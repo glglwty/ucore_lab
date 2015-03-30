@@ -21,7 +21,7 @@ struct cpu {
 
     // Cpu-local storage variables; see below
     struct cpu *cpu;
-    struct proc *proc;           // The currently-running process.
+    struct proc_struct *proc;           // The currently-running process.
 };
 
 extern struct cpu cpus[NCPU];
@@ -36,7 +36,7 @@ extern int ncpu;
 // This is similar to how thread-local variables are implemented
 // in thread libraries such as Linux pthreads.
 extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
-extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
+extern struct proc_struct *current asm("%gs:4");     // cpus[cpunum()].proc
 
 
 // process's state in his life cycle
@@ -112,7 +112,7 @@ struct proc_struct {
 #define le2proc(le, member)         \
     to_struct((le), struct proc_struct, member)
 
-extern struct proc_struct *idleproc, *initproc, *current;
+extern struct proc_struct *idleproc, *initproc;// *current;
 
 void proc_init(void);
 void proc_run(struct proc_struct *proc);

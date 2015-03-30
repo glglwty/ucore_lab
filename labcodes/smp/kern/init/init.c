@@ -26,63 +26,39 @@ int
 kern_init(void) {
     extern char edata[], end[];
     memset(edata, 0, end - edata);
-    
     cons_init();                // init the console
-
-
     const char *message = "(THU.CST) os is loading ...";
     cprintf("%s\n\n", message);
-
     print_kerninfo();
-
     grade_backtrace();
-
     pmm_init();                 // init physical memory management
     cprintf("pmm_init done\n");
     mpinit();//mp
     cprintf("mpinit done\n");
-
-
     lapicinit();//mp
-
     cprintf("lapicinip start done\n");
-
     pic_init();                 // init interrupt controller
-
     cprintf("pic_init_done\n");
-
     ioapicinit();//mp
-
     cprintf("ioapicinit done\n");
-
     idt_init();
-
-
     cprintf("idt init done\n");
     vmm_init();                 // init virtual memory management
-
     cprintf("vmm_init done\n");
     sched_init();               // init scheduler
-
     cprintf("sched_init done\n");
     proc_init();                // init process table
-
     cprintf("proc_init done\n");
-    
     ide_init();                 // init ide devices
-
     cprintf("ide_init done\n");
     swap_init();                // init swap
-
     cprintf("swap_init done\n");
     fs_init();                  // init fs
-
     extern int ismp;
     if(!ismp)
         clock_init();           // init clock interrupt
     startothers();   // start other processors
     cprintf("All guys chose to wake up\n");
-
     mpmain();                 // run idle process
 }
 
@@ -174,7 +150,10 @@ mpmain(void)
     cprintf("cpu%d: starting\n", cpu->id);
     xchg(&cpu->started, 1); // tell startothers() we're up
     intr_enable();              // enable irq interrupt
-    cpu_idle();     // start running processes
+    if (cpunum() == 0)
+        cpu_idle();     // start running processes
+    else
+        while(1);
 }
 
 
@@ -204,7 +183,7 @@ startothers(void)
         stack = kmalloc(KSTACKSIZE);
         *(void**)(code-4) = stack + KSTACKSIZE;  //kva
         *(void**)(code-8) = mpenter; //kva
-        *(int**)(code-12) = c->id;
+        *(int**)(code-12) = c->id;  //No more ad-hoc methods.
 
         lapicstartap(c->id, PADDR(code));
         cprintf("waking up cpu %d\n", c->id);

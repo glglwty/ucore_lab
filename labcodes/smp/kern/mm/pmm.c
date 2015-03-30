@@ -135,19 +135,6 @@ load_esp0(uintptr_t esp0) {
 
 
 void gdt_init(int cpuid) {
-    /*
-    // set boot kernel stack and default SS0
-    ts.ts_ss0 = KERNEL_DS;
-
-    // initialize the TSS filed of the gdt
-    gdt[SEG_TSS] = SEGTSS(STS_T32A, (uintptr_t)&ts, sizeof(ts), DPL_KERNEL);
-
-    // reload all segment registers
-    lgdt(&gdt_pd);
-
-    // load the TSS
-    ltr(GD_TSS);
-    */
     //clear! clear! smp is coming!
     cprintf("I'm in gdt_init, %d\n", cpuid);
     struct cpu *c = &cpus[cpuid];
@@ -176,7 +163,7 @@ void gdt_init(int cpuid) {
     loadgs(GD_CPU);
 
     cprintf("loadgs done, cpuid%d\n", cpuid);
-    ltr(GD_TSS);  //This should be checked. TODO
+    ltr(GD_TSS);
 
     cprintf("ltr done, cpuid%d\n", cpuid);
     cpu = c;

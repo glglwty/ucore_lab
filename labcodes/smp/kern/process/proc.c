@@ -77,7 +77,7 @@ struct proc_struct *idleproc = NULL;
 // init proc
 struct proc_struct *initproc = NULL;
 // current proc
-struct proc_struct *current = NULL;
+//struct proc_struct *current = NULL;
 
 static int nr_process = 0;
 
