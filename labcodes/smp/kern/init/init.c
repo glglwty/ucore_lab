@@ -150,7 +150,7 @@ mpmain(void)
     cprintf("cpu%d: starting\n", cpu->id);
     xchg(&cpu->started, 1); // tell startothers() we're up
     intr_enable();              // enable irq interrupt
-    if (cpunum() == 0)
+    if (cpu->id == 0)
         cpu_idle();     // start running processes
     else
         while(1);

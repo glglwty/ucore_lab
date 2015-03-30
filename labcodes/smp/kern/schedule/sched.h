@@ -4,7 +4,7 @@
 #include <defs.h>
 #include <list.h>
 #include <skew_heap.h>
-
+#include <spinlock.h>
 #define MAX_TIME_SLICE 5
 
 struct proc_struct;
@@ -33,6 +33,8 @@ struct run_queue;
 // core scheduler quite extensible. These classes (the scheduler modules) encapsulate 
 // the scheduling policies. 
 struct sched_class {
+
+    struct spinlock lock;
     // the name of sched_class
     const char *name;
     // Init the run queue

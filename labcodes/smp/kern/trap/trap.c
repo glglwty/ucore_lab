@@ -16,6 +16,8 @@
 #include <sched.h>
 #include <sync.h>
 #include <proc.h>
+#include "assert.h"
+#include "mp.h"
 
 #define TICK_NUM 100
 
@@ -214,48 +216,16 @@ trap_dispatch(struct trapframe *tf) {
                 do_exit(-E_KILLED);
             }
         }
+        lapiceoi();
         break;
     case T_SYSCALL:
         syscall();
         break;
     case IRQ_OFFSET + IRQ_TIMER:
-#if 0
-    LAB3 : If some page replacement algorithm(such as CLOCK PRA) need tick to change the priority of pages,
-    then you can add code here. 
-#endif
-            /* LAB1 2012011282 : STEP 3 */
-            /* handle the timer interrupt */
-            /* (1) After a timer interrupt, you should record this event using a global variable (increase it), such as ticks in kern/driver/clock.c
-             * (2) Every TICK_NUM cycle, you can print some info using a funciton, such as print_ticks().
-             * (3) Too Simple? Yes, I think so!
-             */
-            /* LAB5 2012011282 */
-            /* you should upate you lab1 code (just add ONE or TWO lines of code):
-             *    Every TICK_NUM cycle, you should set current process's current->need_resched = 1
-             */
-
-            //2012011282 begin
-            /*
-            if (ticks++ == TICK_NUM) {
-                ticks = 0;
-                //print_ticks();
-                assert(current != NULL);
-                current->need_resched = 1;
-            }
-            */
             ticks++;
-            assert(current != NULL);
+            //assert(current != NULL);
             run_timer_list();
-
-            //2012011282 end
-            /* LAB6 2012011282 */
-            /* IMPORTANT FUNCTIONS:
-             * run_timer_list
-             *----------------------
-             * you should update your lab5 code (just add ONE or TWO lines of code):
-             *    Every tick, you should update the system time, iterate the timers, and trigger the timers which are end to call scheduler.
-             *    You can use one funcitons to finish all these things.
-             */
+            lapiceoi();
         break;
     case IRQ_OFFSET + IRQ_COM1:
     case IRQ_OFFSET + IRQ_KBD:
@@ -265,14 +235,11 @@ trap_dispatch(struct trapframe *tf) {
           extern void dev_stdin_write(char c);
           dev_stdin_write(c);
         }
-        break;
-    //LAB1 CHALLENGE 1 : YOUR CODE you should modify below codes.
-    case T_SWITCH_TOU:
-    case T_SWITCH_TOK:
-        panic("T_SWITCH_** ??\n");
+        lapiceoi();
         break;
     case IRQ_OFFSET + IRQ_IDE1:
     case IRQ_OFFSET + IRQ_IDE2:
+        lapiceoi();
         /* do nothing */
         break;
     default:
