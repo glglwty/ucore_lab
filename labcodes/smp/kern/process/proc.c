@@ -791,6 +791,7 @@ load_icode(int fd, int argc, char **kargv) {
 
     ret = 0;
     out:
+    cprintf("load_icode returned with value%d\n", ret);
     return ret;
     bad_cleanup_mmap:
     exit_mmap(mm);

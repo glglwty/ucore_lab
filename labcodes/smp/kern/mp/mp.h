@@ -61,6 +61,7 @@ void lapicstartap(uint8_t apicid, uint32_t addr);
 void ioapicinit(void);
 int cpunum(void);
 void lapiceoi(void);
+void ioapicenable(int irq, int cpunum);
 
 //PAGEBREAK!
 // Blank page.

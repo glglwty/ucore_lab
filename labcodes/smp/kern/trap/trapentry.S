@@ -16,6 +16,10 @@ __alltraps:
     movl $GD_KDATA, %eax
     movw %ax, %ds
     movw %ax, %es
+    movw $(SEG_CPU<<3), %ax
+    movw %ax, %fs
+    movw %ax, %gs
+
 
     # push %esp to pass a pointer to the trapframe as an argument to trap()
     pushl %esp
@@ -33,7 +37,7 @@ __trapret:
     popal
 
     # restore %ds, %es, %fs and %gs
-    popl %gs
+    popl %fs
     popl %fs
     popl %es
     popl %ds

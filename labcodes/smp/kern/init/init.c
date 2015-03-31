@@ -21,12 +21,13 @@
 int kern_init(void) __attribute__((noreturn));
 void grade_backtrace(void);
 static void lab1_switch_test(void);
+void cga_init(void);
 
 int
 kern_init(void) {
     extern char edata[], end[];
     memset(edata, 0, end - edata);
-    cons_init();                // init the console
+    cga_init();
     const char *message = "(THU.CST) os is loading ...";
     cprintf("%s\n\n", message);
     print_kerninfo();
@@ -35,11 +36,12 @@ kern_init(void) {
     cprintf("pmm_init done\n");
     mpinit();//mp
     cprintf("mpinit done\n");
-    //lapicinit();//mp
+    lapicinit();//mp
     cprintf("lapicinip start done\n");
     pic_init();                 // init interrupt controller
     cprintf("pic_init_done\n");
-    //ioapicinit();//mp
+    ioapicinit();//mp
+    cons_init();                // init the console
     cprintf("ioapicinit done\n");
     idt_init();
     cprintf("idt init done\n");
@@ -54,14 +56,15 @@ kern_init(void) {
     swap_init();                // init swap
     cprintf("swap_init done\n");
     fs_init();                  // init fs
-    //extern int ismp;
-    //if(!ismp)
+    extern int ismp;
+    if(!ismp)
         clock_init();           // init clock interrupt
-    //startothers();   // start other processors
+    startothers();   // start other processors
     cprintf("All guys chose to wake up\n");
+
     intr_enable();              // enable irq interrupt
-    cpu_idle();
-    //mpmain();                 // run idle process
+    //cpu_idle();
+    mpmain();                 // run idle process
 }
 
 void __attribute__((noinline))

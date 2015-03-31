@@ -7,6 +7,7 @@
 #include <trap.h>
 #include <memlayout.h>
 #include <sync.h>
+#include "mp.h"
 
 /* stupid I/O delay routine necessitated by historical PC design flaws */
 static void
@@ -56,7 +57,7 @@ static uint16_t addr_6845;
 
 /* TEXT-mode CGA/VGA display output */
 
-static void
+void
 cga_init(void) {
     volatile uint16_t *cp = (uint16_t *)(CGA_BUF + KERNBASE);
     uint16_t was = *cp;
@@ -108,6 +109,7 @@ serial_init(void) {
 
     if (serial_exists) {
         pic_enable(IRQ_COM1);
+        ioapicenable(IRQ_COM1, 0);
     }
 }
 
@@ -409,12 +411,12 @@ kbd_init(void) {
     // drain the kbd buffer
     kbd_intr();
     pic_enable(IRQ_KBD);
+    ioapicenable(IRQ_KBD, 0);
 }
 
 /* cons_init - initializes the console devices */
 void
 cons_init(void) {
-    cga_init();
     serial_init();
     kbd_init();
     if (!serial_exists) {

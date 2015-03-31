@@ -205,6 +205,7 @@ trap_dispatch(struct trapframe *tf) {
 
     switch (tf->tf_trapno) {
     case T_PGFLT:  //page fault
+        cprintf("page fault\n");
         if ((ret = pgfault_handler(tf)) != 0) {
             print_trapframe(tf);
             if (current == NULL) {
@@ -223,8 +224,8 @@ trap_dispatch(struct trapframe *tf) {
         break;
     case T_SYSCALL:
         syscall();
-            cprintf("syscall done\n");
-            debug_break();
+            //cprintf("syscall done\n");
+            //debug_break();
         break;
     case IRQ_OFFSET + IRQ_TIMER:
             ticks++;
@@ -266,12 +267,17 @@ trap_dispatch(struct trapframe *tf) {
  * */
 void
 trap(struct trapframe *tf) {
+    //cprintf("trap detected, code:%d\n", tf->tf_trapno);
+    //cprintf("try to touch cpu....%x\n", cpu);
+    //cprintf("try to touch current.....%x\n", current);
     // dispatch based on what type of trap occurred
     // used for previous projects
     if (current == NULL) {
+        //cprintf("current == NULL in trap\n");
         trap_dispatch(tf);
     }
     else {
+        //cprintf("else...\n");
         // keep a trapframe chain in stack
         struct trapframe *otf = current->tf;
         current->tf = tf;
@@ -285,9 +291,9 @@ trap(struct trapframe *tf) {
             if (current->flags & PF_EXITING) {
                 do_exit(-E_KILLED);
             }
-            cprintf("trap dispatched\n");
+            //cprintf("trap dispatched\n");
             if (current->need_resched) {
-                cprintf("need resched\n");
+                //cprintf("need resched\n");
                 schedule();
             }
         }

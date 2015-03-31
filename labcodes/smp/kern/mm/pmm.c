@@ -103,7 +103,7 @@ static void check_boot_pgdir(void);
 static inline void
 lgdt(struct pseudodesc *pd) {
     asm volatile ("lgdt (%0)" :: "r" (pd));
-    asm volatile ("movw %%ax, %%gs" :: "a" (USER_DS));
+    //asm volatile ("movw %%ax, %%gs" :: "a" (USER_DS));
     asm volatile ("movw %%ax, %%fs" :: "a" (USER_DS));
     asm volatile ("movw %%ax, %%es" :: "a" (KERNEL_DS));
     asm volatile ("movw %%ax, %%ds" :: "a" (KERNEL_DS));
@@ -136,7 +136,7 @@ load_esp0(uintptr_t esp0) {
 
 void gdt_init(int cpuid) {
     //clear! clear! smp is coming!
-    cprintf("I'm in gdt_init, %d\n", cpuid);
+    //cprintf("I'm in gdt_init, %d\n", cpuid);
     struct cpu *c = &cpus[cpuid];
 
     c->ts.ts_ss0 = KERNEL_DS;
@@ -146,7 +146,7 @@ void gdt_init(int cpuid) {
         c->ts.ts_esp0 = (uintptr_t )(*((void**)(KADDR(0x7000) - 4)));
     }
 
-    cprintf("set ts_esp0 finished %d\n", cpuid);
+    //cprintf("set ts_esp0 finished %d\n", cpuid);
 
     c->gdt[SEG_KTEXT] = SEG(STA_X | STA_R, 0x0, 0xFFFFFFFF, DPL_KERNEL);
     c->gdt[SEG_KDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_KERNEL);
@@ -156,16 +156,16 @@ void gdt_init(int cpuid) {
     c->gdt[SEG_CPU] = SEG(STA_W, (uintptr_t)(&c->cpu), 8, DPL_KERNEL);
     c->gdt[SEG_TSS] = SEGTSS(STS_T32A, (uintptr_t)&c->ts, sizeof(struct taskstate), DPL_KERNEL);
 
-    cprintf("before lgdt, cpuid%d\n", cpuid);
+    //cprintf("before lgdt, cpuid%d\n", cpuid);
     lgdt2(c->gdt, sizeof(c->gdt));
 
-    cprintf(" lgdt done, cpuid%d\n", cpuid);
+    //cprintf(" lgdt done, cpuid%d\n", cpuid);
     loadgs(GD_CPU);
 
-    cprintf("loadgs done, cpuid%d\n", cpuid);
+    //cprintf("loadgs done, cpuid%d\n", cpuid);
     ltr(GD_TSS);
 
-    cprintf("ltr done, cpuid%d\n", cpuid);
+    //cprintf("ltr done, cpuid%d\n", cpuid);
     cpu = c;
     current = 0;
 }
@@ -767,7 +767,7 @@ check_boot_pgdir(void) {
     free_page(pa2page(PDE_ADDR(boot_pgdir[0])));
     boot_pgdir[0] = 0;
 
-    cprintf("check_boot_pgdir() succeeded!\n");
+    //cprintf("check_boot_pgdir() succeeded!\n");
 }
 
 //perm2str - use string 'u,r,w,-' to present the permission
