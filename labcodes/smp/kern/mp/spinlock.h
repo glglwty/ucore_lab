@@ -1,4 +1,6 @@
 // Mutual exclusion lock.
+#ifndef SPINLOCK_H
+#define SPINLOCK_H
 struct spinlock {
   uint32_t locked;       // Is the lock held?
   
@@ -15,3 +17,5 @@ void acquire(struct spinlock *lk);
 void release(struct spinlock *lk);
 void initlock(struct spinlock *lk, char *name);
 int holding(struct spinlock *lock);
+
+#endif

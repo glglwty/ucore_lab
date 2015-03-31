@@ -26,6 +26,7 @@
 #define KERNEL_DS   ((GD_KDATA) | DPL_KERNEL)
 #define USER_CS     ((GD_UTEXT) | DPL_USER)
 #define USER_DS     ((GD_UDATA) | DPL_USER)
+#define CPU_GS      ((GD_CPU) | DPL_KERNEL)
 
 /* *
  * Virtual memory map:                                          Permissions

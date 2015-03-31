@@ -248,6 +248,7 @@ proc_run(struct proc_struct *proc) {
             current = proc;
             load_esp0(next->kstack + KSTACKSIZE);
             lcr3(next->cr3);
+            //cprintf("before switching...\n");
             switch_to(&(prev->context), &(next->context));
         }
         local_intr_restore(intr_flag);
@@ -298,6 +299,7 @@ kernel_thread(int (*fn)(void *), void *arg, uint32_t clone_flags) {
     memset(&tf, 0, sizeof(struct trapframe));
     tf.tf_cs = KERNEL_CS;
     tf.tf_ds = tf.tf_es = tf.tf_ss = KERNEL_DS;
+    tf.tf_gs = CPU_GS;
     tf.tf_regs.reg_ebx = (uint32_t)fn;
     tf.tf_regs.reg_edx = (uint32_t)arg;
     tf.tf_eip = (uint32_t)kernel_thread_entry;
@@ -630,6 +632,7 @@ load_icode(int fd, int argc, char **kargv) {
      * (7) setup trapframe for user environment
      * (8) if up steps failed, you should cleanup the env.
      */
+    cprintf("in load_icode\n");
     if (current->mm != NULL) {
         panic("load_icode: current->mm must be empty.\n");
     }
@@ -781,6 +784,7 @@ load_icode(int fd, int argc, char **kargv) {
     memset(tf, 0, sizeof(struct trapframe));
     tf->tf_cs = USER_CS;
     tf->tf_ds = tf->tf_es = tf->tf_ss = USER_DS;
+    tf->tf_gs = CPU_GS;
     tf->tf_esp = stacktop;
     tf->tf_eip = elf->e_entry;
     tf->tf_eflags = FL_IF;
@@ -836,12 +840,12 @@ failed_cleanup:
 //           - call load_icode to setup new memory space accroding binary prog.
 int
 do_execve(const char *name, int argc, const char **argv) {
+    cprintf("calling do_execve by proc:%s on cpu %d\n", current->name, cpu->id);
     static_assert(EXEC_MAX_ARG_LEN >= FS_MAX_FPATH_LEN);
     struct mm_struct *mm = current->mm;
     if (!(argc >= 1 && argc <= EXEC_MAX_ARG_NUM)) {
         return -E_INVAL;
     }
-
     char local_name[PROC_NAME_LEN + 1];
     memset(local_name, 0, sizeof(local_name));
     
@@ -849,7 +853,7 @@ do_execve(const char *name, int argc, const char **argv) {
     const char *path;
     
     int ret = -E_INVAL;
-    
+
     lock_mm(mm);
     if (name == NULL) {
         snprintf(local_name, sizeof(local_name), "<null> %d", current->pid);
@@ -867,6 +871,7 @@ do_execve(const char *name, int argc, const char **argv) {
     path = argv[0];
     unlock_mm(mm);
     files_closeall(current->filesp);
+
 
     /* sysfile_open will check the first argument path, thus we have to use a user-space pointer, and argv[0] may be incorrect */    
     int fd;
@@ -986,6 +991,7 @@ do_kill(int pid) {
 // kernel_execve - do SYS_exec syscall to exec a user program called by user_main kernel_thread
 static int
 kernel_execve(const char *name, const char **argv) {
+    cprintf("calling kernel_execve by proc %s\n", current->name);
     int argc = 0, ret;
     while (argv[argc] != NULL) {
         argc ++;
@@ -1016,6 +1022,7 @@ const char *argv[] = {path, ##__VA_ARGS__, NULL};       \
 // user_main - kernel thread used to exec a user program
 static int
 user_main(void *arg) {
+    cprintf("user main entered\n");
 #ifdef TEST
 #ifdef TESTSCRIPT
     KERNEL_EXECVE3(TEST, TESTSCRIPT);
@@ -1031,11 +1038,12 @@ user_main(void *arg) {
 // init_main - the second kernel thread used to create user_main kernel threads
 static int
 init_main(void *arg) {
+    cprintf("init_main\n");
     int ret;
     if ((ret = vfs_set_bootfs("disk0:")) != 0) {
         panic("set boot fs failed: %e.\n", ret);
     }
-    
+    cprintf("set boot fs done\n");
     size_t nr_free_pages_store = nr_free_pages();
     size_t kernel_allocated_store = kallocated();
 
@@ -1043,13 +1051,14 @@ init_main(void *arg) {
     if (pid <= 0) {
         panic("create user_main failed.\n");
     }
+    set_proc_name(find_proc(pid), "user_main");
  extern void check_sync(void);
-    check_sync();                // check philosopher sync problem
+    //check_sync();                // check philosopher sync problem
 
+    cprintf("check_sync done\n");
     while (do_wait(0, NULL) == 0) {
         schedule();
     }
-
     fs_cleanup();
         
     cprintf("all user-mode processes have quit.\n");
@@ -1107,6 +1116,7 @@ proc_init(void) {
 // cpu_idle - at the end of kern_init, the first kernel thread idleproc will do below works
 void
 cpu_idle(void) {
+    cprintf("cpu %d in cpu_idle\n", cpu->id);
     while (1) {
         if (current->need_resched) {
             schedule();

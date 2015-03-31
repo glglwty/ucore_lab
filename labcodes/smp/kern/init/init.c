@@ -35,11 +35,11 @@ kern_init(void) {
     cprintf("pmm_init done\n");
     mpinit();//mp
     cprintf("mpinit done\n");
-    lapicinit();//mp
+    //lapicinit();//mp
     cprintf("lapicinip start done\n");
     pic_init();                 // init interrupt controller
     cprintf("pic_init_done\n");
-    ioapicinit();//mp
+    //ioapicinit();//mp
     cprintf("ioapicinit done\n");
     idt_init();
     cprintf("idt init done\n");
@@ -54,12 +54,14 @@ kern_init(void) {
     swap_init();                // init swap
     cprintf("swap_init done\n");
     fs_init();                  // init fs
-    extern int ismp;
-    if(!ismp)
+    //extern int ismp;
+    //if(!ismp)
         clock_init();           // init clock interrupt
-    startothers();   // start other processors
+    //startothers();   // start other processors
     cprintf("All guys chose to wake up\n");
-    mpmain();                 // run idle process
+    intr_enable();              // enable irq interrupt
+    cpu_idle();
+    //mpmain();                 // run idle process
 }
 
 void __attribute__((noinline))
@@ -121,8 +123,6 @@ lab1_switch_test(void) {
     lab1_print_cur_status();
 }
 
-//warning! smp!
-
 void __attribute__((noreturn))
 mpenter(int cpuid)
 {
@@ -149,11 +149,10 @@ mpmain(void)
 {
     cprintf("cpu%d: starting\n", cpu->id);
     xchg(&cpu->started, 1); // tell startothers() we're up
-    intr_enable();              // enable irq interrupt
-    if (cpu->id == 0)
-        cpu_idle();     // start running processes
-    else
-        while(1);
+    if (cpu->id == 0) {
+        cpu_idle();
+    }
+    while(1);
 }
 
 

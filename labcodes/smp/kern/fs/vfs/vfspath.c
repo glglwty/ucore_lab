@@ -7,6 +7,7 @@
 #include <proc.h>
 #include <error.h>
 #include <assert.h>
+#include "stdio.h"
 
 /*
  * get_cwd_nolock - retrieve current process's working directory. without lock protect
@@ -59,8 +60,10 @@ vfs_get_curdir(struct inode **dir_store) {
 int
 vfs_set_curdir(struct inode *dir) {
     int ret = 0;
+    cprintf("in vfs_set_curdir\n");
     lock_cfs();
     struct inode *old_dir;
+    cprintf("lock_cfs finished\n");
     if ((old_dir = get_cwd_nolock()) != dir) {
         if (dir != NULL) {
             uint32_t type;
@@ -89,12 +92,17 @@ out:
  */
 int
 vfs_chdir(char *path) {
+    cprintf("in vfs_chdir\n");
     int ret;
     struct inode *node;
+    cprintf("before if in vfs_chdir\n");
     if ((ret = vfs_lookup(path, &node)) == 0) {
+        cprintf("in if in vfs_chdir\n");
         ret = vfs_set_curdir(node);
+        cprintf("vfs set_curdir done\n");
         vop_ref_dec(node);
     }
+    cprintf("after if in vfs_chdir\n");
     return ret;
 }
 /*

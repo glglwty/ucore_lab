@@ -194,6 +194,9 @@ pgfault_handler(struct trapframe *tf) {
 static volatile int in_swap_tick_event = 0;
 extern struct mm_struct *check_mm_struct;
 
+void debug_break() {
+
+}
 static void
 trap_dispatch(struct trapframe *tf) {
     char c;
@@ -220,10 +223,12 @@ trap_dispatch(struct trapframe *tf) {
         break;
     case T_SYSCALL:
         syscall();
+            cprintf("syscall done\n");
+            debug_break();
         break;
     case IRQ_OFFSET + IRQ_TIMER:
             ticks++;
-            //assert(current != NULL);
+            assert(current != NULL);
             run_timer_list();
             lapiceoi();
         break;
@@ -270,17 +275,19 @@ trap(struct trapframe *tf) {
         // keep a trapframe chain in stack
         struct trapframe *otf = current->tf;
         current->tf = tf;
-    
+
         bool in_kernel = trap_in_kernel(tf);
-    
+
         trap_dispatch(tf);
-    
+        //cprintf("in_kernel :%d\n", in_kernel);
         current->tf = otf;
         if (!in_kernel) {
             if (current->flags & PF_EXITING) {
                 do_exit(-E_KILLED);
             }
+            cprintf("trap dispatched\n");
             if (current->need_resched) {
+                cprintf("need resched\n");
                 schedule();
             }
         }

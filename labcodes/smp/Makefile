@@ -283,6 +283,9 @@ $(foreach p,$(USER_BINS),$(eval $(call fscopy,$(p),$(SFSROOT)$(SLASH))))
 $(SFSROOT):
 	if [ ! -d "$(SFSROOT)" ]; then mkdir $(SFSROOT); fi
 
+$(SFSROOT):
+	$(V)$(MKDIR) $@
+
 $(SFSIMG): $(SFSROOT) $(SFSBINS) | $(call totarget,mksfs)
 	$(V)dd if=/dev/zero of=$@ bs=1M count=128
 	@$(call totarget,mksfs) $@ $(SFSROOT)
@@ -315,7 +318,7 @@ TARGETS: $(TARGETS)
 
 .DEFAULT_GOAL := TARGETS
 
-QEMUOPTS = -hda $(UCOREIMG) -drive file=$(SWAPIMG),media=disk,cache=writeback -drive file=$(SFSIMG),media=disk,cache=writeback -smp 2
+QEMUOPTS = -hda $(UCOREIMG) -drive file=$(SWAPIMG),media=disk,cache=writeback -drive file=$(SFSIMG),media=disk,cache=writeback 
 
 .PHONY: qemu qemu-nox debug debug-nox monitor
 qemu-mon: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
@@ -332,7 +335,7 @@ monitor: $(UCOREIMG) $(SWAPING) $(SFSIMG)
 TERMINAL := gnome-terminal
 
 debug: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
-	$(V)$(QEMU) -S -s -parallel stdio $(QEMUOPTS) -serial null -d in_asm -D $(BINDIR)/q.log &
+	$(V)$(QEMU) -S -s -parallel stdio $(QEMUOPTS) -serial null &
 	$(V)sleep 2
 	$(V)$(TERMINAL) -e "$(GDB) -q -x tools/gdbinit"
 
@@ -340,7 +343,6 @@ debug-nox: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
 	$(V)$(QEMU) -S -s -serial mon:stdio $(QEMUOPTS) -nographic &
 	$(V)sleep 2
 	$(V)$(TERMINAL) -e "$(GDB) -q -x tools/gdbinit"
-
 
 RUN_PREFIX	:= _binary_$(OBJDIR)_$(USER_PREFIX)
 MAKEOPTS	:= --quiet --no-print-directory
@@ -350,6 +352,9 @@ run-%: build-%
 
 sh-%: script-%
 	$(V)$(QEMU) -parallel stdio $(QEMUOPTS) -serial null
+
+run-nox-%: build-%
+	$(V)$(QEMU) -serial mon:stdio $(QEMUOPTS) -nographic
 
 build-%: touch
 	$(V)$(MAKE) $(MAKEOPTS) "DEFS+=-DTEST=$*" 

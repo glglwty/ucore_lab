@@ -34,7 +34,7 @@ struct run_queue;
 // the scheduling policies. 
 struct sched_class {
 
-    struct spinlock lock;
+    //struct spinlock lock;
     // the name of sched_class
     const char *name;
     // Init the run queue

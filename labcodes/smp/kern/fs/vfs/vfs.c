@@ -57,16 +57,23 @@ change_bootfs(struct inode *node) {
 // vfs_set_bootfs - change the dir of file system
 int
 vfs_set_bootfs(char *fsname) {
+    cprintf("in vfs_set_bootfs\n");
     struct inode *node = NULL;
     if (fsname != NULL) {
         char *s;
+        cprintf("before the if\n");
         if ((s = strchr(fsname, ':')) == NULL || s[1] != '\0') {
+            cprintf("in the if\n");
             return -E_INVAL;
         }
+        cprintf("after the if\n");
         int ret;
+        cprintf("before second if\n");
         if ((ret = vfs_chdir(fsname)) != 0) {
+            cprintf("in second if\n");
             return ret;
         }
+        cprintf("after second if\n");
         if ((ret = vfs_get_curdir(&node)) != 0) {
             return ret;
         }

@@ -143,7 +143,7 @@ void gdt_init(int cpuid) {
     if (cpuid == 0) {
         c->ts.ts_esp0 = (uintptr_t)bootstacktop;
     } else {
-        c->ts.ts_esp0 = (uintptr_t )(*((void**)(KADDR(0x7000) - 4)) - KSTACKSIZE);
+        c->ts.ts_esp0 = (uintptr_t )(*((void**)(KADDR(0x7000) - 4)));
     }
 
     cprintf("set ts_esp0 finished %d\n", cpuid);
@@ -154,7 +154,7 @@ void gdt_init(int cpuid) {
     c->gdt[SEG_UDATA] = SEG(STA_W, 0x0, 0xFFFFFFFF, DPL_USER);
 
     c->gdt[SEG_CPU] = SEG(STA_W, (uintptr_t)(&c->cpu), 8, DPL_KERNEL);
-    c->gdt[SEG_TSS] = SEGTSS(STS_T32A, (uintptr_t)&c->ts, sizeof(c->ts), DPL_KERNEL);
+    c->gdt[SEG_TSS] = SEGTSS(STS_T32A, (uintptr_t)&c->ts, sizeof(struct taskstate), DPL_KERNEL);
 
     cprintf("before lgdt, cpuid%d\n", cpuid);
     lgdt2(c->gdt, sizeof(c->gdt));
@@ -387,7 +387,7 @@ pmm_init(void) {
     //reload gdt(third time,the last time) to map all physical memory
     //virtual_addr 0~4G=liear_addr 0~4G
     //then set kernel stack(ss:esp) in TSS, setup TSS in gdt, load TSS
-    gdt_init(cpunum());
+    gdt_init(0);
 
     //disable the map of virtual_addr 0~4M
     boot_pgdir[0] = 0;
