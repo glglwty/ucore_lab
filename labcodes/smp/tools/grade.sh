@@ -327,7 +327,7 @@ sfsimg=$(make_print sfsimg)
 swapimg=$(make_print swapimg)
 
 ## set default qemu-options
-qemuopts="-hda $osimg -drive file=$swapimg,media=disk,cache=writeback -drive file=$sfsimg,media=disk,cache=writeback"
+qemuopts="-hda $osimg -drive file=$swapimg,media=disk,cache=writeback -drive file=$sfsimg,media=disk,cache=writeback -smp 4"
 
 ## set break-function, default is readline
 brkfun=readline

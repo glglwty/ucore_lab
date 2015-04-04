@@ -174,6 +174,7 @@ void gdt_init(int cpuid) {
 static void
 init_pmm_manager(void) {
     pmm_manager = &default_pmm_manager;
+    initlock(&pmm_manager->lock, "pmm manager");
     cprintf("memory management: %s\n", pmm_manager->name);
     pmm_manager->init();
 }
@@ -767,7 +768,7 @@ check_boot_pgdir(void) {
     free_page(pa2page(PDE_ADDR(boot_pgdir[0])));
     boot_pgdir[0] = 0;
 
-    //cprintf("check_boot_pgdir() succeeded!\n");
+    cprintf("check_boot_pgdir() succeeded!\n");
 }
 
 //perm2str - use string 'u,r,w,-' to present the permission

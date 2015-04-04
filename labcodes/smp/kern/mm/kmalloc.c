@@ -40,8 +40,8 @@
 
 
 //some helper
-#define spin_lock_irqsave(l, f) local_intr_save(f)
-#define spin_unlock_irqrestore(l, f) local_intr_restore(f)
+#define spin_lock_irqsave(l, f) do{local_intr_save(f); acquire(l);}while(0)
+#define spin_unlock_irqrestore(l, f) do{release(l);local_intr_restore(f); }while(0)
 typedef unsigned int gfp_t;
 #ifndef PAGE_SIZE
 #define PAGE_SIZE PGSIZE
@@ -72,6 +72,7 @@ struct bigblock {
 	struct bigblock *next;
 };
 typedef struct bigblock bigblock_t;
+struct spinlock slob_lock, block_lock;
 
 static slob_t arena = { .next = &arena, .units = 1 };
 static slob_t *slobfree = &arena;
@@ -188,6 +189,8 @@ static void slob_free(void *block, int size)
 
 void
 slob_init(void) {
+    initlock(&slob_lock, "slob_lock in kmalloc");
+    initlock(&block_lock, "block_lock in kmalloc");
   cprintf("use SLOB allocator\n");
 }
 

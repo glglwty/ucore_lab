@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <console.h>
 #include <unistd.h>
+#include "spinlock.h"
 /* HIGH level console I/O */
 
 /* *

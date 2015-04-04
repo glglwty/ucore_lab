@@ -1055,7 +1055,7 @@ init_main(void *arg) {
     }
     set_proc_name(find_proc(pid), "user_main");
  extern void check_sync(void);
-    //check_sync();                // check philosopher sync problem
+    check_sync();                // check philosopher sync problem
 
     cprintf("check_sync done\n");
     while (do_wait(0, NULL) == 0) {
@@ -1065,7 +1065,7 @@ init_main(void *arg) {
         
     cprintf("all user-mode processes have quit.\n");
     assert(initproc->cptr == NULL && initproc->yptr == NULL && initproc->optr == NULL);
-    assert(nr_process == 2);
+    assert(nr_process == 1 + ncpu);
     assert(list_next(&proc_list) == &(initproc->list_link));
     assert(list_prev(&proc_list) == &(initproc->list_link));
 
@@ -1118,12 +1118,15 @@ do_sleep(unsigned int time) {
     timer_t __timer, *timer = timer_init(&__timer, current, time);
     current->state = PROC_SLEEPING;
     current->wait_state = WT_TIMER;
+    lock_schtable();
     add_timer(timer);
+    release_schtable();
     local_intr_restore(intr_flag);
 
     schedule();
-
+    lock_schtable();
     del_timer(timer);
+    release_schtable();
     return 0;
 }
 

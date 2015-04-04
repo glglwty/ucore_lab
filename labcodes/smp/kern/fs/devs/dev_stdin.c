@@ -23,6 +23,7 @@ dev_stdin_write(char c) {
     bool intr_flag;
     if (c != '\0') {
         local_intr_save(intr_flag);
+        lock_wait_table(wait_queue);
         {
             stdin_buffer[p_wpos % STDIN_BUFSIZE] = c;
             if (p_wpos - p_rpos < STDIN_BUFSIZE) {
@@ -32,6 +33,7 @@ dev_stdin_write(char c) {
                 wakeup_queue(wait_queue, WT_KBD, 1);
             }
         }
+        release_wait_table(wait_queue);
         local_intr_restore(intr_flag);
     }
 }
@@ -49,13 +51,17 @@ dev_stdin_read(char *buf, size_t len) {
             }
             else {
                 wait_t __wait, *wait = &__wait;
+                lock_wait_table(wait_queue);
                 wait_current_set(wait_queue, wait, WT_KBD);
+                release_wait_table(wait_queue);
                 local_intr_restore(intr_flag);
 
                 schedule();
 
                 local_intr_save(intr_flag);
+                lock_wait_table(wait_queue);
                 wait_current_del(wait_queue, wait);
+                release_wait_table(wait_queue);
                 if (wait->wakeup_flags == WT_KBD) {
                     goto try_again;
                 }

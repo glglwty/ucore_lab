@@ -3,6 +3,7 @@
 #include <sem.h>
 #include <monitor.h>
 #include <assert.h>
+#include <spinlock.h>
 
 #define N 5 /* 哲学家数目 */
 #define LEFT (i-1+N)%N /* i的左邻号码 */
@@ -12,6 +13,19 @@
 #define EATING 2 /* 哲学家正在吃面 */
 #define TIMES  4 /* 吃4次饭 */
 #define SLEEP_TIME 10
+
+struct spinlock checksync_lock;
+int
+mycprintf(const char *fmt, ...) {
+    acquire(&checksync_lock);
+    va_list ap;
+    int cnt;
+    va_start(ap, fmt);
+    cnt = vcprintf(fmt, ap);
+    va_end(ap);
+    release(&checksync_lock);
+    return cnt;
+}
 
 //---------- philosophers problem using semaphore ----------------------
 int state_sema[N]; /* 记录每个人状态的数组 */
@@ -53,19 +67,19 @@ int philosopher_using_semaphore(void * arg) /* i：哲学家号码，从0到N-1 
 {
     int i, iter=0;
     i=(int)arg;
-    cprintf("I am No.%d philosopher_sema\n",i);
+    mycprintf("I am No.%d philosopher_sema\n",i);
     while(iter++<TIMES)
     { /* 无限循环 */
-        cprintf("Iter %d, No.%d philosopher_sema is thinking\n",iter,i); /* 哲学家正在思考 */
+        mycprintf("Iter %d, No.%d philosopher_sema is thinking\n",iter,i); /* 哲学家正在思考 */
         do_sleep(SLEEP_TIME);
         phi_take_forks_sema(i);
         /* 需要两只叉子，或者阻塞 */
-        cprintf("Iter %d, No.%d philosopher_sema is eating\n",iter,i); /* 进餐 */
+        mycprintf("Iter %d, No.%d philosopher_sema is eating\n",iter,i); /* 进餐 */
         do_sleep(SLEEP_TIME);
         phi_put_forks_sema(i);
         /* 把两把叉子同时放回桌子 */
     }
-    cprintf("No.%d philosopher_sema quit\n",i);
+    mycprintf("No.%d philosopher_sema quit\n",i);
     return 0;
 }
 
@@ -104,15 +118,15 @@ int philosopher_using_semaphore(void * arg) /* i：哲学家号码，从0到N-1 
  */
 
 struct proc_struct *philosopher_proc_condvar[N]; // N philosopher
-int state_condvar[N];                            // the philosopher's state: EATING, HUNGARY, THINKING  
+int state_condvar[N];                            // the philosopher's state: EATING, HUNGARY, THINKING
 monitor_t mt, *mtp=&mt;                          // monitor
 
 void phi_test_condvar (i) {
     if(state_condvar[i]==HUNGRY&&state_condvar[LEFT]!=EATING
             &&state_condvar[RIGHT]!=EATING) {
-        cprintf("phi_test_condvar: state_condvar[%d] will eating\n",i);
+        mycprintf("phi_test_condvar: state_condvar[%d] will eating\n",i);
         state_condvar[i] = EATING ;
-        cprintf("phi_test_condvar: signal self_cv[%d] \n",i);
+        mycprintf("phi_test_condvar: signal self_cv[%d] \n",i);
         cond_signal(&mtp->cv[i]) ;
     }
 }
@@ -157,26 +171,26 @@ int philosopher_using_condvar(void * arg) { /* arg is the No. of philosopher 0~N
 
     int i, iter=0;
     i=(int)arg;
-    cprintf("I am No.%d philosopher_condvar\n",i);
+    mycprintf("I am No.%d philosopher_condvar\n",i);
     while(iter++<TIMES)
     { /* iterate*/
-        cprintf("Iter %d, No.%d philosopher_condvar is thinking\n",iter,i); /* thinking*/
+        mycprintf("Iter %d, No.%d philosopher_condvar is thinking\n",iter,i); /* thinking*/
         do_sleep(SLEEP_TIME);
         phi_take_forks_condvar(i);
         /* need two forks, maybe blocked */
-        cprintf("Iter %d, No.%d philosopher_condvar is eating\n",iter,i); /* eating*/
+        mycprintf("Iter %d, No.%d philosopher_condvar is eating\n",iter,i); /* eating*/
         do_sleep(SLEEP_TIME);
         phi_put_forks_condvar(i);
         /* return two forks back*/
     }
-    cprintf("No.%d philosopher_condvar quit\n",i);
+    mycprintf("No.%d philosopher_condvar quit\n",i);
     return 0;
 }
 
 void check_sync(void){
 
     int i;
-
+    initlock(&checksync_lock, "check_sync");
     //check semaphore
     sem_init(&mutex, 1);
     for(i=0;i<N;i++){

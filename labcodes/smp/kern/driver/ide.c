@@ -58,6 +58,7 @@ static const struct {
 #define IO_CTRL(ideno)          (channels[(ideno) >> 1].ctrl)
 
 static struct ide_device {
+    struct spinlock lock;
     unsigned char valid;        // 0 or 1 (If Device Really Exists)
     unsigned int sets;          // Commend Sets Supported
     unsigned int size;          // Size in Sectors
@@ -82,6 +83,7 @@ ide_init(void) {
     for (ideno = 0; ideno < MAX_IDE; ideno ++) {
         /* assume that no device here */
         ide_devices[ideno].valid = 0;
+        initlock(&ide_devices[ideno].lock, "ide");
 
         iobase = IO_BASE(ideno);
 
@@ -156,10 +158,11 @@ ide_device_size(unsigned short ideno) {
 
 int
 ide_read_secs(unsigned short ideno, uint32_t secno, void *dst, size_t nsecs) {
+
     assert(nsecs <= MAX_NSECS && VALID_IDE(ideno));
     assert(secno < MAX_DISK_NSECS && secno + nsecs <= MAX_DISK_NSECS);
     unsigned short iobase = IO_BASE(ideno), ioctrl = IO_CTRL(ideno);
-
+    acquire(&ide_devices[ideno].lock);
     ide_wait_ready(iobase, 0);
 
     // generate interrupt
@@ -180,6 +183,7 @@ ide_read_secs(unsigned short ideno, uint32_t secno, void *dst, size_t nsecs) {
     }
 
 out:
+    release(&ide_devices[ideno].lock);
     return ret;
 }
 
@@ -189,6 +193,7 @@ ide_write_secs(unsigned short ideno, uint32_t secno, const void *src, size_t nse
     assert(secno < MAX_DISK_NSECS && secno + nsecs <= MAX_DISK_NSECS);
     unsigned short iobase = IO_BASE(ideno), ioctrl = IO_CTRL(ideno);
 
+    acquire(&ide_devices[ideno].lock);
     ide_wait_ready(iobase, 0);
 
     // generate interrupt
@@ -209,6 +214,7 @@ ide_write_secs(unsigned short ideno, uint32_t secno, const void *src, size_t nse
     }
 
 out:
+    release(&ide_devices[ideno].lock);
     return ret;
 }
 

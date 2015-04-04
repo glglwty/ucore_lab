@@ -36,6 +36,7 @@ kern_init(void) {
     cprintf("pmm_init done\n");
     mpinit();//mp
     cprintf("mpinit done\n");
+    assert(ncpu > 1);
     lapicinit();//mp
     cprintf("lapicinip start done\n");
     pic_init();                 // init interrupt controller
@@ -59,9 +60,10 @@ kern_init(void) {
     extern int ismp;
     if(!ismp)
         clock_init();           // init clock interrupt
+    else
+        cprintf("++ setup timer interrupts\n");
     startothers();   // start other processors
     cprintf("All guys chose to wake up\n");
-    //cpu_idle();
     mpmain();                 // run idle process
 }
 

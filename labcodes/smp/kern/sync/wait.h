@@ -2,8 +2,10 @@
 #define __KERN_SYNC_WAIT_H__
 
 #include <list.h>
+#include <spinlock.h>
 
 typedef struct {
+    struct spinlock lock;
     list_entry_t wait_head;
 } wait_queue_t;
 
@@ -36,9 +38,11 @@ void wakeup_first(wait_queue_t *queue, uint32_t wakeup_flags, bool del);
 void wakeup_queue(wait_queue_t *queue, uint32_t wakeup_flags, bool del);
 
 void wait_current_set(wait_queue_t *queue, wait_t *wait, uint32_t wait_state);
+void lock_wait_table(wait_queue_t *queue);
+void release_wait_table(wait_queue_t *queue);
 
 #define wait_current_del(queue, wait)                                       \
-    do {                                                                    \
+    do { assert(holding(&(queue)->lock));                                                                    \
         if (wait_in_queue(wait)) {                                          \
             wait_queue_del(queue, wait);                                    \
         }                                                                   \

@@ -7,12 +7,14 @@
 #include <default_sched.h>
 
 // the list of timer
+//TODO: I current lock timer and run_que together..
 static list_entry_t timer_list;
 
 static struct sched_class *sched_class;
 
 static struct run_queue *rq;
 
+//This is not atomic!
 static inline void
 sched_class_enqueue(struct proc_struct *proc) {
     assert(holding(&sched_class->lock));
@@ -21,18 +23,21 @@ sched_class_enqueue(struct proc_struct *proc) {
     }
 }
 
+//This is not atomic!
 static inline void
 sched_class_dequeue(struct proc_struct *proc) {
     assert(holding(&sched_class->lock));
     sched_class->dequeue(rq, proc);
 }
 
+//This is not atomic!
 static inline struct proc_struct *
 sched_class_pick_next(void) {
     assert(holding(&sched_class->lock));
     return sched_class->pick_next(rq);
 }
 
+//This is not atomic!
 static void
 sched_class_proc_tick(struct proc_struct *proc) {
     if (proc != idleproc) {
@@ -57,6 +62,7 @@ sched_init(void) {
     cprintf("sched class: %s\n", sched_class->name);
 }
 
+//This is not atomic!
 void
 wakeup_proc(struct proc_struct *proc) {
     assert(holding(&sched_class->lock));
@@ -106,6 +112,7 @@ schedule(void) {
 
 void
 add_timer(timer_t *timer) {
+    assert(holding(&sched_class->lock));
     bool intr_flag;
     local_intr_save(intr_flag);
     {
@@ -129,6 +136,7 @@ add_timer(timer_t *timer) {
 // del timer from timer_list
 void
 del_timer(timer_t *timer) {
+    assert(holding(&sched_class->lock));
     bool intr_flag;
     local_intr_save(intr_flag);
     {
