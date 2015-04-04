@@ -103,7 +103,9 @@ struct proc_struct {
     uint32_t lab6_priority;                     // FOR LAB6 ONLY: the priority of process, set by lab6_set_priority(uint32_t)
     struct files_struct *filesp;                // the file related info(pwd, files_count, files_array, fs_semaphore) of process
 
-    struct spinlock lock; //protect everything.
+    //a proc is either running or in a wait/timer queue. Thus there would be only one cpu manipulating on it
+    //The only thing we should protect is the by-relationship operation(kill wait etc..)
+    struct spinlock lock;
 };
 
 #define PF_EXITING                  0x00000001      // getting shutdown

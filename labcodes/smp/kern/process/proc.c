@@ -974,7 +974,6 @@ repeat:
         }
     }
     else {
-        proc = current->cptr;
         for (; proc != NULL; proc = proc->optr) {
             haskid = 1;
             if (proc->state == PROC_ZOMBIE) {
@@ -1018,6 +1017,7 @@ int
 do_kill(int pid) {
     struct proc_struct *proc;
     if ((proc = find_proc(pid)) != NULL) {
+        acquire(&proc->lock);
         if (!(proc->flags & PF_EXITING)) {
             proc->flags |= PF_EXITING;
             if (proc->wait_state & WT_INTERRUPTED) {
@@ -1025,8 +1025,10 @@ do_kill(int pid) {
                 wakeup_proc(proc);
                 release_schtable();
             }
+            release(&proc->lock);
             return 0;
         }
+        release(&proc->lock);
         return -E_KILLED;
     }
     return -E_INVAL;
