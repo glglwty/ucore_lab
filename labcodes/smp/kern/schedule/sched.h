@@ -71,5 +71,8 @@ void add_timer(timer_t *timer);     // add timer to timer_list
 void del_timer(timer_t *timer);     // del timer from timer_list
 void run_timer_list(void);          // call scheduler to update tick related info, and check the timer is expired? If expired, then wakup proc
 
+void lock_schtable(void);
+void release_schtable(void);
+
 #endif /* !__KERN_SCHEDULE_SCHED_H__ */
 

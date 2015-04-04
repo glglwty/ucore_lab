@@ -152,11 +152,8 @@ mpmain(void)
     xchg(&cpu->started, 1); // tell startothers() we're up
     create_init_procs();
 
-    if (cpu->id == 0) {
         intr_enable();              // enable irq interrupt
         cpu_idle();
-    }
-    while(1);
 }
 
 

@@ -18,4 +18,7 @@ void release(struct spinlock *lk);
 void initlock(struct spinlock *lk, char *name);
 int holding(struct spinlock *lock);
 
+#define try_get_save(lock, state) do{if (((state) = holding(lock)) == 0) {acquire(lock);}} while(0);
+#define lock_state_resotre(lock, state) do{if ((state) == 0){release(lock);}}while(0);
+
 #endif

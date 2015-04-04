@@ -507,7 +507,9 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
         hash_proc(proc);
     }
     local_intr_restore(intr_flag);
+    lock_schtable();
     wakeup_proc(proc);
+    release_schtable();
     ret = proc->pid;
     //2012011282 end
 
@@ -561,6 +563,7 @@ do_exit(int error_code) {
     bool intr_flag;
     struct proc_struct *proc;
     local_intr_save(intr_flag);
+    lock_schtable();
     {
         proc = current->parent;
         if (proc->wait_state == WT_CHILD) {
@@ -583,8 +586,8 @@ do_exit(int error_code) {
             }
         }
     }
+    release_schtable();
     local_intr_restore(intr_flag);
-    
     schedule();
     panic("do_exit will not return!! %d.\n", current->pid);
 }
@@ -976,7 +979,9 @@ do_kill(int pid) {
         if (!(proc->flags & PF_EXITING)) {
             proc->flags |= PF_EXITING;
             if (proc->wait_state & WT_INTERRUPTED) {
+                lock_schtable();
                 wakeup_proc(proc);
+                release_schtable();
             }
             return 0;
         }

@@ -15,6 +15,7 @@ static struct run_queue *rq;
 
 static inline void
 sched_class_enqueue(struct proc_struct *proc) {
+    assert(holding(&sched_class->lock));
     if (proc != idleproc) {
         sched_class->enqueue(rq, proc);
     }
@@ -22,11 +23,13 @@ sched_class_enqueue(struct proc_struct *proc) {
 
 static inline void
 sched_class_dequeue(struct proc_struct *proc) {
+    assert(holding(&sched_class->lock));
     sched_class->dequeue(rq, proc);
 }
 
 static inline struct proc_struct *
 sched_class_pick_next(void) {
+    assert(holding(&sched_class->lock));
     return sched_class->pick_next(rq);
 }
 
@@ -56,6 +59,7 @@ sched_init(void) {
 
 void
 wakeup_proc(struct proc_struct *proc) {
+    assert(holding(&sched_class->lock));
     assert(proc->state != PROC_ZOMBIE);
     bool intr_flag;
     local_intr_save(intr_flag);
@@ -80,7 +84,7 @@ schedule(void) {
     struct proc_struct *next;
     local_intr_save(intr_flag);
     {
-        acquire(&sched_class->lock);
+        lock_schtable();
         current->need_resched = 0;
         if (current->state == PROC_RUNNABLE) {
             sched_class_enqueue(current);
@@ -88,7 +92,7 @@ schedule(void) {
         if ((next = sched_class_pick_next()) != NULL) {
             sched_class_dequeue(next);
         }
-        release(&sched_class->lock);
+        release_schtable();
         if (next == NULL) {
             next = idleproc;
         }
@@ -147,6 +151,7 @@ void
 run_timer_list(void) {
     bool intr_flag;
     local_intr_save(intr_flag);
+    lock_schtable();
     {
         list_entry_t *le = list_next(&timer_list);
         if (le != &timer_list) {
@@ -172,5 +177,14 @@ run_timer_list(void) {
         }
         sched_class_proc_tick(current);
     }
+    release_schtable();
     local_intr_restore(intr_flag);
+}
+
+void lock_schtable(void) {
+    acquire(&sched_class->lock);
+}
+
+void release_schtable(void) {
+    release(&sched_class->lock);
 }
