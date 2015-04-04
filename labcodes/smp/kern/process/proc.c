@@ -176,13 +176,7 @@ get_proc_name(struct proc_struct *proc) {
 // set_links - set the relation links of process
 static void
 set_links(struct proc_struct *proc) {
-    //TODO: deadlock? Synchronize is running out of my mind...
-    acquire(&proc->lock);
-    acquire(&proc->parent->lock);
-    if (proc->parent->cptr != NULL) {
-        //no race here, since parent has been locked...
-        acquire(&proc->parent->cptr->lock);
-    }
+    assert(holding(&proc_table_lock));
 
     list_add(&proc_list, &(proc->list_link));
     proc->yptr = NULL;
@@ -192,26 +186,13 @@ set_links(struct proc_struct *proc) {
     proc->parent->cptr = proc;
     nr_process ++;
 
-
-    if (proc->optr != NULL) {
-        release(&proc->optr->lock);
-    }
-    release(&proc->parent->lock);
-    release(&proc->lock);
 }
 
 // remove_links - clean the relation links of process
 static void
 remove_links(struct proc_struct *proc) {
-    acquire(&proc->lock);
-    acquire(&proc->parent->lock);
-    if (proc->optr != NULL) {
-        acquire(&proc->optr->lock);
-    }
-    if (proc->yptr != NULL) {
-        acquire(&proc->yptr->lock);
-    }
 
+    assert(holding(&proc_table_lock));
     list_del(&(proc->list_link));
     if (proc->optr != NULL) {
         proc->optr->yptr = proc->yptr;
@@ -223,16 +204,6 @@ remove_links(struct proc_struct *proc) {
        proc->parent->cptr = proc->optr;
     }
     nr_process --;
-
-    if (proc->yptr != NULL) {
-        release(&proc->yptr->lock);
-    }
-
-    if (proc->optr != NULL) {
-        release(&proc->optr->lock);
-    }
-    release(&proc->parent->lock);
-    release(&proc->lock);
 }
 
 // get_pid - alloc a unique pid for process
@@ -300,19 +271,21 @@ forkret(void) {
 // hash_proc - add proc into proc hash_list
 static void
 hash_proc(struct proc_struct *proc) {
+    assert(holding(&proc_table_lock));
     list_add(hash_list + pid_hashfn(proc->pid), &(proc->hash_link));
 }
 
 // unhash_proc - delete proc from proc hash_list
 static void
 unhash_proc(struct proc_struct *proc) {
+    assert(holding(&proc_table_lock));
     list_del(&(proc->hash_link));
 }
 
 // find_proc - find proc frome proc hash_list according to pid
 struct proc_struct *
 find_proc(int pid) {
-    if (0 < pid && pid < MAX_PID) {
+        if (0 < pid && pid < MAX_PID) {
         list_entry_t *list = hash_list + pid_hashfn(pid), *le = list;
         while ((le = list_next(le)) != list) {
             struct proc_struct *proc = le2proc(le, hash_link);
@@ -962,7 +935,9 @@ do_wait(int pid, int *code_store) {
 
     struct proc_struct *proc;
     bool intr_flag, haskid;
+
 repeat:
+    acquire(&proc_table_lock);
     haskid = 0;
     if (pid != 0) {
         proc = find_proc(pid);
@@ -974,6 +949,7 @@ repeat:
         }
     }
     else {
+        proc = current->cptr;
         for (; proc != NULL; proc = proc->optr) {
             haskid = 1;
             if (proc->state == PROC_ZOMBIE) {
@@ -984,12 +960,14 @@ repeat:
     if (haskid) {
         current->state = PROC_SLEEPING;
         current->wait_state = WT_CHILD;
+        release(&proc_table_lock);
         schedule();
         if (current->flags & PF_EXITING) {
             do_exit(-E_KILLED);
         }
         goto repeat;
     }
+    release(&proc_table_lock);
     return -E_BAD_PROC;
 
 found:
@@ -1000,24 +978,23 @@ found:
         *code_store = proc->exit_code;
     }
     local_intr_save(intr_flag);
-    acquire(&proc_table_lock);
     {
         unhash_proc(proc);
         remove_links(proc);
     }
-    release(&proc_table_lock);
     local_intr_restore(intr_flag);
     put_kstack(proc);
     kfree(proc);
+    release(&proc_table_lock);
     return 0;
 }
 
 // do_kill - kill process with pid by set this process's flags with PF_EXITING
 int
 do_kill(int pid) {
+    acquire(&proc_table_lock);
     struct proc_struct *proc;
     if ((proc = find_proc(pid)) != NULL) {
-        acquire(&proc->lock);
         if (!(proc->flags & PF_EXITING)) {
             proc->flags |= PF_EXITING;
             if (proc->wait_state & WT_INTERRUPTED) {
@@ -1025,12 +1002,13 @@ do_kill(int pid) {
                 wakeup_proc(proc);
                 release_schtable();
             }
-            release(&proc->lock);
+            release(&proc_table_lock);
             return 0;
         }
-        release(&proc->lock);
+        release(&proc_table_lock);
         return -E_KILLED;
     }
+    release(&proc_table_lock);
     return -E_INVAL;
 }
 
