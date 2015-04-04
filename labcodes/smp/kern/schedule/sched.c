@@ -45,9 +45,8 @@ static struct run_queue __rq;
 void
 sched_init(void) {
     list_init(&timer_list);
-
     sched_class = &default_sched_class;
-
+    initlock(&sched_class->lock, "sched_class");
     rq = &__rq;
     rq->max_time_slice = MAX_TIME_SLICE;
     sched_class->init(rq);
@@ -81,6 +80,7 @@ schedule(void) {
     struct proc_struct *next;
     local_intr_save(intr_flag);
     {
+        acquire(&sched_class->lock);
         current->need_resched = 0;
         if (current->state == PROC_RUNNABLE) {
             sched_class_enqueue(current);
@@ -88,6 +88,7 @@ schedule(void) {
         if ((next = sched_class_pick_next()) != NULL) {
             sched_class_dequeue(next);
         }
+        release(&sched_class->lock);
         if (next == NULL) {
             next = idleproc;
         }

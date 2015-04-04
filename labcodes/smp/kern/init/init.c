@@ -61,8 +61,6 @@ kern_init(void) {
         clock_init();           // init clock interrupt
     startothers();   // start other processors
     cprintf("All guys chose to wake up\n");
-
-    intr_enable();              // enable irq interrupt
     //cpu_idle();
     mpmain();                 // run idle process
 }
@@ -152,7 +150,10 @@ mpmain(void)
 {
     cprintf("cpu%d: starting\n", cpu->id);
     xchg(&cpu->started, 1); // tell startothers() we're up
+    create_init_procs();
+
     if (cpu->id == 0) {
+        intr_enable();              // enable irq interrupt
         cpu_idle();
     }
     while(1);

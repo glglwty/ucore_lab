@@ -72,12 +72,8 @@ list_entry_t proc_list;
 // has list for process set based on pid
 static list_entry_t hash_list[HASH_LIST_SIZE];
 
-// idle proc
-struct proc_struct *idleproc = NULL;
 // init proc
 struct proc_struct *initproc = NULL;
-// current proc
-//struct proc_struct *current = NULL;
 
 static int nr_process = 0;
 
@@ -1083,35 +1079,6 @@ proc_init(void) {
         list_init(hash_list + i);
     }
 
-    if ((idleproc = alloc_proc()) == NULL) {
-        panic("cannot alloc idleproc.\n");
-    }
-
-    idleproc->pid = 0;
-    idleproc->state = PROC_RUNNABLE;
-    idleproc->kstack = (uintptr_t)bootstack;
-    idleproc->need_resched = 1;
-    
-    if ((idleproc->filesp = files_create()) == NULL) {
-        panic("create filesp (idleproc) failed.\n");
-    }
-    files_count_inc(idleproc->filesp);
-    
-    set_proc_name(idleproc, "idle");
-    nr_process ++;
-
-    current = idleproc;
-
-    int pid = kernel_thread(init_main, NULL, 0);
-    if (pid <= 0) {
-        panic("create init_main failed.\n");
-    }
-
-    initproc = find_proc(pid);
-    set_proc_name(initproc, "init");
-
-    assert(idleproc != NULL && idleproc->pid == 0);
-    assert(initproc != NULL && initproc->pid == 1);
 }
 
 // cpu_idle - at the end of kern_init, the first kernel thread idleproc will do below works
@@ -1153,4 +1120,39 @@ do_sleep(unsigned int time) {
 
     del_timer(timer);
     return 0;
+}
+
+void create_init_procs(void) {
+
+    if ((idleproc = alloc_proc()) == NULL) {
+        panic("cannot alloc idleproc.\n");
+    }
+
+    idleproc->pid = 0;
+    idleproc->state = PROC_RUNNABLE;
+    idleproc->kstack = (uintptr_t) bootstack;
+    idleproc->need_resched = 1;
+
+    if ((idleproc->filesp = files_create()) == NULL) {
+        panic("create filesp (idleproc) failed.\n");
+    }
+    files_count_inc(idleproc->filesp);
+
+    set_proc_name(idleproc, "idle");
+    nr_process++;
+
+    current = idleproc;
+
+    if (cpu->id == 0) {
+        int pid = kernel_thread(init_main, NULL, 0);
+        if (pid <= 0) {
+            panic("create init_main failed.\n");
+        }
+
+        initproc = find_proc(pid);
+        set_proc_name(initproc, "init");
+        assert(initproc != NULL && initproc->pid == 1);
+    }
+
+    assert(idleproc != NULL && idleproc->pid == 0);
 }
