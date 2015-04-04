@@ -6,6 +6,7 @@
 #include <wait.h>
 
 typedef struct {
+    struct spinlock lock;
     int value;
     wait_queue_t wait_queue;
 } semaphore_t;

@@ -67,21 +67,7 @@ default_init(void) {
 
 static void
 default_init_memmap(struct Page *base, size_t n) {
-    /*
-     assert(n > 0);
-     struct Page *p = base;
-     for (; p != base + n; p ++) {
-     assert(PageReserved(p));
-     p->flags = p->property = 0;
-     set_page_ref(p, 0);
-     }
-     base->property = n;
-     SetPageProperty(base);
-     nr_free += n;
-     list_add(&free_list, &(base->page_link));
-     */
     //2012011282 begin
-    acquire(&pmm_manager->lock);
     assert(n > 0);
     struct Page *p = base;
     for (; p != base + n; p ++) {
@@ -92,45 +78,18 @@ default_init_memmap(struct Page *base, size_t n) {
     }
     base->property = n;
     nr_free += n;
-    release(&pmm_manager->lock);
     //2012011282 end
 
 }
 
 static struct Page *
 default_alloc_pages(size_t n) {
-    /*
-     assert(n > 0);
-     if (n > nr_free) {
-     return NULL;
-     }
-     struct Page *page = NULL;
-     list_entry_t *le = &free_list;
-     while ((le = list_next(le)) != &free_list) {
-     struct Page *p = le2page(le, page_link);
-     if (p->property >= n) {
-     page = p;
-     break;
-     }
-     }
-     if (page != NULL) {
-     list_del(&(page->page_link));
-     if (page->property > n) {
-     struct Page *p = page + n;
-     p->property = page->property - n;
-     list_add(&free_list, &(p->page_link));
-     }
-     nr_free -= n;
-     ClearPageProperty(page);
-     }
-     return page;
-     */
     //2012011282 begin
     assert(n > 0);
     if (n > nr_free) {
         return NULL;
     }
-    acquire(&pmm_manager->lock);
+    assert(holding(&pmm_manager->lock));
     list_entry_t *le;
     for (le = &free_list; (le = list_next(le)) != &free_list;) {
         struct Page *p = le2page(le, page_link);
@@ -147,48 +106,17 @@ default_alloc_pages(size_t n) {
                 le2page(le, page_link)->property = p->property - n;
             }
             nr_free -= n;
-            release(&pmm_manager->lock);
             return p;
         }
     }
-    release(&pmm_manager->lock);
     return NULL;
     //2012011282 end
 }
 
 static void
 default_free_pages(struct Page *base, size_t n) {
-    /*
-     assert(n > 0);
-     struct Page *p = base;
-     for (; p != base + n; p ++) {
-     assert(!PageReserved(p) && !PageProperty(p));
-     p->flags = 0;
-     set_page_ref(p, 0);
-     }
-     base->property = n;
-     SetPageProperty(base);
-     list_entry_t *le = list_next(&free_list);
-     while (le != &free_list) {
-     p = le2page(le, page_link);
-     le = list_next(le);
-     if (base + base->property == p) {
-     base->property += p->property;
-     ClearPageProperty(p);
-     list_del(&(p->page_link));
-     }
-     else if (p + p->property == base) {
-     p->property += base->property;
-     ClearPageProperty(base);
-     base = p;
-     list_del(&(p->page_link));
-     }
-     }
-     nr_free += n;
-     list_add(&free_list, &(base->page_link));
-     */
     //2012011282 begin
-    acquire(&pmm_manager->lock);
+    assert(holding(&pmm_manager->lock));
     assert(n > 0);
     assert(PageReserved(base));
     nr_free += n;
@@ -210,7 +138,6 @@ default_free_pages(struct Page *base, size_t n) {
         le2page(le, page_link)->property += base->property;
         base->property = 0;
     }
-    release(&pmm_manager->lock);
     //2012011282 end
 }
 

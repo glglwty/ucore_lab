@@ -7,6 +7,7 @@
 #include "memlayout.h"
 #include "skew_heap.h"
 #include "mmu.h"
+#include "spinlock.h"
 
 
 #define NSEGS     7
@@ -101,6 +102,8 @@ struct proc_struct {
     uint32_t lab6_stride;                       // FOR LAB6 ONLY: the current stride of the process 
     uint32_t lab6_priority;                     // FOR LAB6 ONLY: the priority of process, set by lab6_set_priority(uint32_t)
     struct files_struct *filesp;                // the file related info(pwd, files_count, files_array, fs_semaphore) of process
+
+    struct spinlock lock; //protect everything.
 };
 
 #define PF_EXITING                  0x00000001      // getting shutdown

@@ -11,12 +11,14 @@
 void
 sem_init(semaphore_t *sem, int value) {
     sem->value = value;
+    initlock(&sem->lock, "semaphore");
     wait_queue_init(&(sem->wait_queue));
 }
 
 static __noinline void __up(semaphore_t *sem, uint32_t wait_state) {
     bool intr_flag;
     local_intr_save(intr_flag);
+    acquire(&sem->lock);
     lock_wait_table(&sem->wait_queue);
     {
         wait_t *wait;
@@ -29,14 +31,17 @@ static __noinline void __up(semaphore_t *sem, uint32_t wait_state) {
         }
     }
     release_wait_table(&sem->wait_queue);
+    release(&sem->lock);
     local_intr_restore(intr_flag);
 }
 
 static __noinline uint32_t __down(semaphore_t *sem, uint32_t wait_state) {
     bool intr_flag;
     local_intr_save(intr_flag);
+    acquire(&sem->lock);
     if (sem->value > 0) {
         sem->value --;
+        release(&sem->lock);
         local_intr_restore(intr_flag);
         return 0;
     }
@@ -44,14 +49,17 @@ static __noinline uint32_t __down(semaphore_t *sem, uint32_t wait_state) {
     lock_wait_table(&sem->wait_queue);
     wait_current_set(&(sem->wait_queue), wait, wait_state);
     release_wait_table(&sem->wait_queue);
+    release(&sem->lock);
     local_intr_restore(intr_flag);
 
     schedule();
 
     local_intr_save(intr_flag);
+    acquire(&sem->lock);
     lock_wait_table(&sem->wait_queue);
     wait_current_del(&(sem->wait_queue), wait);
     release_wait_table(&sem->wait_queue);
+    release(&sem->lock);
     local_intr_restore(intr_flag);
 
     if (wait->wakeup_flags != wait_state) {
@@ -75,9 +83,11 @@ bool
 try_down(semaphore_t *sem) {
     bool intr_flag, ret = 0;
     local_intr_save(intr_flag);
+    acquire(&sem->lock);
     if (sem->value > 0) {
         sem->value --, ret = 1;
     }
+    release(&sem->lock);
     local_intr_restore(intr_flag);
     return ret;
 }

@@ -28,7 +28,7 @@ struct vma_struct {
 #define VM_WRITE                0x00000002
 #define VM_EXEC                 0x00000004
 #define VM_STACK                0x00000008
-
+//TODO : I don't think there need any more lock. This should be checked.
 // the control struct for a set of vma using the same PDT
 struct mm_struct {
     list_entry_t mmap_list;        // linear list link which sorted by start addr of vma

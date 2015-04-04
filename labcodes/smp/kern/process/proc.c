@@ -64,6 +64,8 @@ SYS_getpid      : get the process's pid
 
 // the process set's list
 list_entry_t proc_list;
+//protect proc_list and hash_list
+struct spinlock proc_table_lock;
 
 #define HASH_SHIFT          10
 #define HASH_LIST_SIZE      (1 << HASH_SHIFT)
@@ -150,6 +152,8 @@ alloc_proc(void) {
         //2012011282 begin
         proc->filesp = NULL;
         //2012011282 end
+
+        initlock(&proc->lock, "proc lock");
     }
     return proc;
 }
@@ -172,6 +176,14 @@ get_proc_name(struct proc_struct *proc) {
 // set_links - set the relation links of process
 static void
 set_links(struct proc_struct *proc) {
+    //TODO: deadlock? Synchronize is running out of my mind...
+    acquire(&proc->lock);
+    acquire(&proc->parent->lock);
+    if (proc->parent->cptr != NULL) {
+        //no race here, since parent has been locked...
+        acquire(&proc->parent->cptr->lock);
+    }
+
     list_add(&proc_list, &(proc->list_link));
     proc->yptr = NULL;
     if ((proc->optr = proc->parent->cptr) != NULL) {
@@ -179,11 +191,27 @@ set_links(struct proc_struct *proc) {
     }
     proc->parent->cptr = proc;
     nr_process ++;
+
+
+    if (proc->optr != NULL) {
+        release(&proc->optr->lock);
+    }
+    release(&proc->parent->lock);
+    release(&proc->lock);
 }
 
 // remove_links - clean the relation links of process
 static void
 remove_links(struct proc_struct *proc) {
+    acquire(&proc->lock);
+    acquire(&proc->parent->lock);
+    if (proc->optr != NULL) {
+        acquire(&proc->optr->lock);
+    }
+    if (proc->yptr != NULL) {
+        acquire(&proc->yptr->lock);
+    }
+
     list_del(&(proc->list_link));
     if (proc->optr != NULL) {
         proc->optr->yptr = proc->yptr;
@@ -195,6 +223,16 @@ remove_links(struct proc_struct *proc) {
        proc->parent->cptr = proc->optr;
     }
     nr_process --;
+
+    if (proc->yptr != NULL) {
+        release(&proc->yptr->lock);
+    }
+
+    if (proc->optr != NULL) {
+        release(&proc->optr->lock);
+    }
+    release(&proc->parent->lock);
+    release(&proc->lock);
 }
 
 // get_pid - alloc a unique pid for process
@@ -502,9 +540,11 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     bool intr_flag;
     local_intr_save(intr_flag);
     {
+        acquire(&proc_table_lock);
         set_links(proc);
         proc->pid = get_pid();
         hash_proc(proc);
+        release(&proc_table_lock);
     }
     local_intr_restore(intr_flag);
     lock_schtable();
@@ -961,10 +1001,12 @@ found:
         *code_store = proc->exit_code;
     }
     local_intr_save(intr_flag);
+    acquire(&proc_table_lock);
     {
         unhash_proc(proc);
         remove_links(proc);
     }
+    release(&proc_table_lock);
     local_intr_restore(intr_flag);
     put_kstack(proc);
     kfree(proc);
@@ -1115,10 +1157,10 @@ do_sleep(unsigned int time) {
     }
     bool intr_flag;
     local_intr_save(intr_flag);
+    lock_schtable();
     timer_t __timer, *timer = timer_init(&__timer, current, time);
     current->state = PROC_SLEEPING;
     current->wait_state = WT_TIMER;
-    lock_schtable();
     add_timer(timer);
     release_schtable();
     local_intr_restore(intr_flag);

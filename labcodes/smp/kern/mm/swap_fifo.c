@@ -26,14 +26,16 @@
  */
 
 list_entry_t pra_list_head;
+struct spinlock swap_fifo_lock;
 /*
  * (2) _fifo_init_mm: init pra_list_head and let  mm->sm_priv point to the addr of pra_list_head.
  *              Now, From the memory control struct mm_struct, we can access FIFO PRA
  */
 static int
 _fifo_init_mm(struct mm_struct *mm)
-{     
+{
      list_init(&pra_list_head);
+    initlock(&swap_fifo_lock, "swap_fifo");
      mm->sm_priv = &pra_list_head;
      //cprintf(" mm->sm_priv %x in fifo_init_mm\n",mm->sm_priv);
      return 0;
@@ -44,6 +46,7 @@ _fifo_init_mm(struct mm_struct *mm)
 static int
 _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
 {
+    acquire(&swap_fifo_lock);
     list_entry_t *head=(list_entry_t*) mm->sm_priv;
     list_entry_t *entry=&(page->pra_page_link);
 
@@ -54,6 +57,7 @@ _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int
     //2012011282 begin
     list_add_before(head, entry);
     //2012011282 end
+    release(&swap_fifo_lock);
     return 0;
 }
 /*
@@ -63,6 +67,7 @@ _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int
 static int
 _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
 {
+    acquire(&swap_fifo_lock);
     list_entry_t *head=(list_entry_t*) mm->sm_priv;
     assert(head != NULL);
     assert(in_tick==0);
@@ -77,6 +82,7 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
     *ptr_page = le2page(target, pra_page_link);
     assert(*ptr_page != NULL);
     //2012011282 end
+    release(&swap_fifo_lock);
     return 0;
 }
 

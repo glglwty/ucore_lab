@@ -194,9 +194,11 @@ alloc_pages(size_t n) {
     while (1)
     {
          local_intr_save(intr_flag);
+        acquire(&pmm_manager->lock);
          {
               page = pmm_manager->alloc_pages(n);
          }
+        release(&pmm_manager->lock);
          local_intr_restore(intr_flag);
 
          if (page != NULL || n > 1 || swap_init_ok == 0) break;
@@ -214,9 +216,11 @@ void
 free_pages(struct Page *base, size_t n) {
     bool intr_flag;
     local_intr_save(intr_flag);
+    acquire(&pmm_manager->lock);
     {
         pmm_manager->free_pages(base, n);
     }
+    release(&pmm_manager->lock);
     local_intr_restore(intr_flag);
 }
 
@@ -227,9 +231,11 @@ nr_free_pages(void) {
     size_t ret;
     bool intr_flag;
     local_intr_save(intr_flag);
+    acquire(&pmm_manager->lock);
     {
         ret = pmm_manager->nr_free_pages();
     }
+    release(&pmm_manager->lock);
     local_intr_restore(intr_flag);
     return ret;
 }
