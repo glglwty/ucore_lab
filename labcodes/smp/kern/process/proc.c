@@ -558,7 +558,7 @@ do_exit(int error_code) {
     if (current == initproc) {
         panic("initproc exit.\n");
     }
-    
+    acquire(&proc_table_lock);
     struct mm_struct *mm = current->mm;
     if (mm != NULL) {
         lcr3(boot_cr3);
@@ -601,6 +601,7 @@ do_exit(int error_code) {
     }
     release_schtable();
     local_intr_restore(intr_flag);
+    release(&proc_table_lock);
     schedule();
     panic("do_exit will not return!! %d.\n", current->pid);
 }
@@ -1135,6 +1136,7 @@ do_sleep(unsigned int time) {
     if (time == 0) {
         return 0;
     }
+    acquire(&proc_table_lock);
     bool intr_flag;
     local_intr_save(intr_flag);
     lock_schtable();
@@ -1144,7 +1146,7 @@ do_sleep(unsigned int time) {
     add_timer(timer);
     release_schtable();
     local_intr_restore(intr_flag);
-
+    release(&proc_table_lock);
     schedule();
     lock_schtable();
     del_timer(timer);
